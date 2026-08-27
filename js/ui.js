@@ -74,7 +74,6 @@ export function collectRefs(doc = document) {
     coinStage: byId("coin-stage"),
     coin,
     faces: {
-      show: coin ? coin.querySelector(".face-show") : null,
       yes: coin ? coin.querySelector(".face-yes") : null,
       no: coin ? coin.querySelector(".face-no") : null,
     },
@@ -160,15 +159,20 @@ export function buildSlot(slotEl) {
   };
 }
 
-// 渲染硬币主题三面（文字 emoji + 主题色）
-// 输入：coinEls {show,yes,no}、theme 主题对象；输出：无
-export function renderCoinTheme(coinEls, theme) {
-  coinEls.show.textContent = theme.faces.show;
-  coinEls.yes.textContent = theme.faces.yes;
-  coinEls.no.textContent = theme.faces.no;
-  for (const face of ["show", "yes", "no"]) {
-    coinEls[face].style.setProperty(`--coin-face-${face}`, theme.color);
-  }
+// 渲染硬币主题：双面 emoji + 展示面（旋转前硬币本体即展示面）
+// 输入：refs（含 faces.yes/no）、theme 主题对象；输出：无
+export function renderCoinTheme(refs, theme) {
+  refs.faces.yes.textContent = theme.faces.yes;
+  refs.faces.no.textContent = theme.faces.no;
+  refs.faces.yes.style.setProperty("--coin-face-yes", theme.color);
+  refs.faces.no.style.setProperty("--coin-face-no", theme.color);
+}
+
+// 设置硬币指定面为展示面（待机态该面显示封面；转回时只改翻转后将朝前的背面）
+// 输入：refs（含 faces.yes/no）、theme 主题对象、which（"yes"|"no" 目标面）；输出：无
+export function setCoinShowFace(refs, theme, which) {
+  refs.faces[which].textContent = theme.faces.show;
+  refs.faces[which].style.setProperty(`--coin-face-${which}`, theme.color);
 }
 
 // 设置硬币旋转角（绕 Y 轴，度）
@@ -246,7 +250,7 @@ export function buildScoreContent(score) {
       no.className = "no";
       no.textContent = `第${item.round}局`;
       const face = document.createElement("span");
-      face.className = "face";
+      face.className = "result-face";
       face.textContent = item.face === "yes" ? "✅" : "❌";
       li.append(no, face);
       list.appendChild(li);
@@ -280,7 +284,7 @@ export function buildSettingsContent(currentTheme, onChange) {
 // - yRangeFor(x)：定数可用范围联动（纯函数）
 // - collectRefs(doc)：骨架元素引用收集，缺失 fail-fast
 // - buildSlot(slotEl)：构建滑动选择器，返回轨道/吸附/取值句柄
-// - renderCoinTheme / setCoinAngle：硬币渲染
+// - renderCoinTheme / setCoinShowFace / setCoinAngle：硬币渲染
 // - renderRoundResult / renderProgress / showReset：结果区
 // - showOverlayCard / hideOverlay / showToast：浮层与提示
 // - buildScoreContent / buildSettingsContent：成绩/设置浮层内容构建

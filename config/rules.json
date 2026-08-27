@@ -3,6 +3,12 @@
   "idleTimeoutMs": 3000,
   "accelFactor": 1.6,
   "decelDurationMs": 2600,
+  "swipeThreshold": 6,
+  "guideSpeedThreshold": 0.2,
+  "guideMinRemainingDeg": 180,
+  "guideSpeedFactor": 0.012,
+  "resultHoldMs": 2000,
+  "resetFlipMs": 1400,
   "turns": 5,
   "flipMs": 600,
   "configVersion": "rules-v1"

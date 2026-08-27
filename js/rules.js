@@ -28,8 +28,14 @@ export const REQUIRED_KEYS = [
   "idleTimeoutMs",
   "accelFactor",
   "decelDurationMs",
+  "swipeThreshold",
+  "guideSpeedThreshold",
+  "guideMinRemainingDeg",
+  "guideSpeedFactor",
   "turns",
   "flipMs",
+  "resultHoldMs",
+  "resetFlipMs",
 ];
 
 // 主题定义：2 套（MVP 用 emoji 占位，后续可替换为插画/配色）
@@ -122,6 +128,40 @@ export function validateRules(raw) {
     );
   }
 
+  const swipeThreshold = toNumber(raw.swipeThreshold, "swipeThreshold ");
+  if (swipeThreshold <= 0) {
+    throw new Error(
+      `swipeThreshold 必须是正数（抛硬币手势最小横向位移像素），收到：${raw.swipeThreshold}`,
+    );
+  }
+
+  const guideSpeedThreshold = toNumber(
+    raw.guideSpeedThreshold,
+    "guideSpeedThreshold ",
+  );
+  if (guideSpeedThreshold <= 0) {
+    throw new Error(
+      `guideSpeedThreshold 必须是正数（落点引导触发速度阈值圈/秒），收到：${raw.guideSpeedThreshold}`,
+    );
+  }
+
+  const guideMinRemainingDeg = toNumber(
+    raw.guideMinRemainingDeg,
+    "guideMinRemainingDeg ",
+  );
+  if (guideMinRemainingDeg <= 0) {
+    throw new Error(
+      `guideMinRemainingDeg 必须是正数（落点引导最小剩余角，保证旋转观感），收到：${raw.guideMinRemainingDeg}`,
+    );
+  }
+
+  const guideSpeedFactor = toNumber(raw.guideSpeedFactor, "guideSpeedFactor ");
+  if (guideSpeedFactor <= 0) {
+    throw new Error(
+      `guideSpeedFactor 必须是正数（落点引导速度比例），收到：${raw.guideSpeedFactor}`,
+    );
+  }
+
   const turns = toNumber(raw.turns, "turns ");
   if (!Number.isInteger(turns) || turns < 0) {
     throw new Error(`turns 必须是非负整数（旋转圈数），收到：${raw.turns}`);
@@ -134,13 +174,33 @@ export function validateRules(raw) {
     );
   }
 
+  const resultHoldMs = toNumber(raw.resultHoldMs, "resultHoldMs ");
+  if (resultHoldMs <= 0) {
+    throw new Error(
+      `resultHoldMs 必须是正数（结果面停留毫秒），收到：${raw.resultHoldMs}`,
+    );
+  }
+
+  const resetFlipMs = toNumber(raw.resetFlipMs, "resetFlipMs ");
+  if (resetFlipMs <= 0) {
+    throw new Error(
+      `resetFlipMs 必须是正数（转回展示面毫秒），收到：${raw.resetFlipMs}`,
+    );
+  }
+
   return {
     defaultMode,
     idleTimeoutMs,
     accelFactor,
     decelDurationMs,
+    swipeThreshold,
+    guideSpeedThreshold,
+    guideMinRemainingDeg,
+    guideSpeedFactor,
     turns,
     flipMs,
+    resultHoldMs,
+    resetFlipMs,
     configVersion:
       raw.configVersion === undefined ? null : String(raw.configVersion),
   };
