@@ -2,11 +2,10 @@
 // 幸运硬币选择 - 渲染层（DOM 构建与刷新，只读不改业务状态）
 // 设计要点：模式互斥/定数联动/中文数字为纯函数（无头可测）；
 // collectRefs 收拢骨架元素引用；业务决策留在装配层（main.js）。
-// 关联配置：rules.js 主题/模式；coin.js 三面角。
+// 关联配置：rules.js 主题/模式；coin.js 双面角。
 // ============================================================
 
 import { THEMES, DEFAULT_THEME } from "./rules.js";
-import { FACE_ANGLES } from "./coin.js";
 
 // 中文数字：索引 0 = 一，对应数字 1
 export const CN_DIGITS = ["一", "二", "三", "四", "五", "六", "七", "八", "九"];
@@ -105,7 +104,6 @@ export function buildSlot(slotEl) {
   const track = document.createElement("div");
   track.className = "slot-track";
   slotEl.appendChild(track);
-  const itemW = 44;
   const items = [];
   for (let i = PICKER_MIN; i <= PICKER_MAX; i++) {
     const item = document.createElement("div");
@@ -116,10 +114,14 @@ export function buildSlot(slotEl) {
     items.push(item);
   }
 
+  // 吸附步长与真实 item 宽度同源（CSS 窄屏断点会改宽，硬编码 44 会错位）
+  const itemW = items[0].offsetWidth || 44;
+
   const centerOffset = () => (slotEl.clientWidth - itemW) / 2;
 
   // 设置选中索引（0 基，对应数字 PICKER_MIN+i），联动 track 位移
   const setIndex = (idx, selectedMap = null) => {
+    track.style.transition = "";
     const clamped = Math.max(0, Math.min(items.length - 1, idx));
     track.style.transform = `translateX(${centerOffset() - clamped * itemW}px)`;
     items.forEach((item, i) => {
@@ -131,8 +133,9 @@ export function buildSlot(slotEl) {
     return clamped;
   };
 
-  // 以 translateX 像素偏移驱动轨道（拖动中）
+  // 以 translateX 像素偏移驱动轨道（拖动中）：禁过渡保证跟手不滞后
   const setOffset = (px) => {
+    track.style.transition = "none";
     track.style.transform = `translateX(${px}px)`;
   };
 
@@ -291,4 +294,4 @@ export function buildSettingsContent(currentTheme, onChange) {
 // 设计理由：渲染层只画快照不改业务状态（装配层 main.js 是唯一业务容器）；
 //   纯函数内核（模式互斥/定数联动）无头可测，DOM 表现层由浏览器冒烟覆盖
 // 异常处理：collectRefs 骨架缺失 fail-fast；其余渲染路径零异常不中断
-// 关联配置：rules.js THEMES/DEFAULT_THEME、coin.js FACE_ANGLES；消费方 main.js
+// 关联配置：rules.js THEMES/DEFAULT_THEME、coin.js 双面角；消费方 main.js

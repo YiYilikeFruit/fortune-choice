@@ -9,13 +9,7 @@
 
 import { validateRules, MODES, THEMES, DEFAULT_THEME } from "./rules.js";
 import { createGame, toss, setStatus, STATUS } from "./game.js";
-import {
-  tick,
-  finalFace,
-  FACE_ANGLES,
-  guidedVelocity,
-  guidedStep,
-} from "./coin.js";
+import { tick, guidedStep } from "./coin.js";
 import * as ui from "./ui.js";
 
 // 解析配置 JSON 文本（装配层唯一解析入口）
@@ -79,6 +73,9 @@ function createCtx(rules, version) {
     settling: false,
     guiding: false,
     idleTimer: null,
+    settleId: null,
+    holdId: null,
+    flipId: null,
     rafId: null,
     lastT: 0,
   };
@@ -87,6 +84,15 @@ function createCtx(rules, version) {
 // 重置整轮对局（终局后/换模式时调用）
 // 输入：ctx 编排上下文；输出：无
 function resetGame(ctx, refs) {
+  // 清理残留定时器：防旧局落定/停留/翻转回调污染新局（切换模式/重置时触发）
+  clearTimeout(ctx.idleTimer);
+  clearTimeout(ctx.settleId);
+  clearTimeout(ctx.holdId);
+  clearTimeout(ctx.flipId);
+  ctx.idleTimer = null;
+  ctx.settleId = null;
+  ctx.holdId = null;
+  ctx.flipId = null;
   ctx.game = createGame(
     { mode: ctx.mode, x: ctx.custom.x, y: ctx.custom.y },
     makeSeed(),
@@ -197,59 +203,54 @@ function onSwipe(ctx, refs, deltaX) {
   }, ctx.rules.idleTimeoutMs);
 }
 
-// 落定：动画终点对齐决策面（不弄虚作假），展示结果，终局出重置按钮
+// 落定：展示结果，终局出重置按钮并暴露 seed（可复现）；非终局停留结果面后翻转回展示面。
+// 引导已使 angle 精确等于目标结果面（无角度差），此处不再做对齐过渡。
+// 定时器句柄存 ctx（holdId/flipId），由 resetGame 统一清理防竞态污染新局。
 // 输入：ctx、refs；输出：无
 function settle(ctx, refs) {
   if (!ctx.pending) return;
   ctx.settling = true;
-  const target = finalFace(ctx.angle, ctx.pending.face);
-  const diff = target - ctx.angle;
-  ctx.angle = target;
-  ctx.velocity = 0;
-  refs.coin.style.transition = `transform ${Math.max(400, diff * 3)}ms cubic-bezier(0.16, 1, 0.3, 1)`;
-  ui.setCoinAngle(refs.coin, ctx.angle);
-
-  const finished = ctx.pending.finished;
   const resultFace = ctx.pending.face;
+  const finished = ctx.pending.finished;
   const faceText = resultFace === "yes" ? "YES" : "NO";
   const round = ctx.game.currentRound;
+  ctx.pending = null;
 
-  setTimeout(() => {
-    ctx.pending = null;
-    refs.coin.style.transition = "none";
-    if (finished) {
+  if (finished) {
+    ctx.settling = false;
+    ctx.score.push({ round, face: ctx.game.decision });
+    ui.renderRoundResult(
+      refs.roundResult,
+      `最终答案：${ctx.game.decision.toUpperCase()}！`,
+      true,
+    );
+    // 暴露本局 seed：同一 seed 可复现整局结果
+    ui.renderProgress(refs.progress, `seed: ${ctx.game.seed}`);
+    ui.showReset(refs.resetBtn, true);
+    return;
+  }
+
+  ctx.score.push({
+    round,
+    face: ctx.game.results[ctx.game.results.length - 1],
+  });
+  ui.renderRoundResult(refs.roundResult, `第${round}局：${faceText}`);
+  // 结果面停留 resultHoldMs，让用户看清本局结果，再慢速转回展示面
+  ctx.holdId = setTimeout(() => {
+    // 只把背面（翻转后将朝前的那面）换成展示面：当前朝前的结果面保持结果，
+    // 翻转过程 = 结果面翻走、展示面翻来，翻转结束硬币本体即展示面
+    const which = resultFace === "yes" ? "no" : "yes";
+    ui.setCoinShowFace(refs, THEMES[ctx.theme], which);
+    // 统一再转半圈（180°）：无论落在 yes(0°) 还是 no(180°)，
+    // 转回都有可见旋转动画（直接归 0 在 yes 面时无视觉变化会跳变）
+    ctx.angle += 180;
+    refs.coin.style.transition = `transform ${ctx.rules.resetFlipMs}ms cubic-bezier(0.4, 0, 0.2, 1)`;
+    ui.setCoinAngle(refs.coin, ctx.angle);
+    ctx.flipId = setTimeout(() => {
+      refs.coin.style.transition = "none";
       ctx.settling = false;
-      ctx.score.push({ round, face: ctx.pending ? null : ctx.game.decision });
-      ui.renderRoundResult(
-        refs.roundResult,
-        `最终答案：${ctx.pending ? "" : ctx.game.decision.toUpperCase()}！`,
-        true,
-      );
-      ui.showReset(refs.resetBtn, true);
-      return;
-    }
-    ctx.score.push({
-      round,
-      face: ctx.game.results[ctx.game.results.length - 1],
-    });
-    ui.renderRoundResult(refs.roundResult, `第${round}局：${faceText}`);
-    // 结果面停留 resultHoldMs，让用户看清本局结果，再慢速转回展示面
-    setTimeout(() => {
-      // 只把背面（翻转后将朝前的那面）换成展示面：当前朝前的结果面保持结果，
-      // 翻转过程 = 结果面翻走、展示面翻来，翻转结束硬币本体即展示面
-      const which = resultFace === "yes" ? "no" : "yes";
-      ui.setCoinShowFace(refs, THEMES[ctx.theme], which);
-      // 统一再转半圈（180°）：无论落在 yes(0°) 还是 no(180°)，
-      // 转回都有可见旋转动画（直接归 0 在 yes 面时无视觉变化会跳变）
-      ctx.angle += 180;
-      refs.coin.style.transition = `transform ${ctx.rules.resetFlipMs}ms cubic-bezier(0.4, 0, 0.2, 1)`;
-      ui.setCoinAngle(refs.coin, ctx.angle);
-      setTimeout(() => {
-        refs.coin.style.transition = "none";
-        ctx.settling = false;
-      }, ctx.rules.resetFlipMs + 60);
-    }, ctx.rules.resultHoldMs);
-  }, 400);
+    }, ctx.rules.resetFlipMs + 60);
+  }, ctx.rules.resultHoldMs);
 }
 
 // 更新模式按钮与自定义选择器显隐（互斥状态机）
@@ -404,10 +405,12 @@ export async function init() {
     resetGame(ctx, refs);
     bindUI(ctx, refs);
   } catch (e) {
-    document.body.insertAdjacentHTML(
-      "beforeend",
-      `<div style="position:fixed;inset:auto 0 0 0;padding:14px;background:#ef476f;color:#fff;z-index:99">${String(e.message)}</div>`,
-    );
+    // 错误条用 textContent 赋值，避免配置内容含 HTML 标签时注入
+    const bar = document.createElement("div");
+    bar.textContent = String(e.message);
+    bar.style.cssText =
+      "position:fixed;inset:auto 0 0 0;padding:14px;background:#ef476f;color:#fff;z-index:99";
+    document.body.appendChild(bar);
   }
   return ctx;
 }
@@ -422,18 +425,19 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
 // 函数清单与逻辑：
 // - parseConfig/loadJson/bootstrap：配置加载契约（装配层唯一 IO 入口）
 // - makeSeed()：生成对局 seed（随机，结果快照记录）
-// - createCtx(rules, version)：对局编排上下文（单例容器）
-// - resetGame(ctx, refs)：整轮重置（终局/换模式后）
-// - frame(ctx, refs, now)：动画主循环——tick 速度衰减推进角度，归 0 调 settle
+// - createCtx(rules, version)：对局编排上下文（单例容器，含定时器句柄）
+// - resetGame(ctx, refs)：整轮重置（清理定时器防竞态、归零对局/硬币状态）
+// - frame(ctx, refs, now)：动画主循环——自由衰减 + 落点引导 guidedStep 精确落定
 // - onSwipe(ctx, refs, deltaX)：滑动加速 + 首次 toss 定本局结果 + 重置超时计时
-// - settle(ctx, refs)：落定——finalFace 对齐决策面、展示结果、终局出重置按钮
+// - settle(ctx, refs)：落定——展示结果、终局暴露 seed 与重置按钮；非终局停留后翻转回展示面
 // - applyModeUI/onModeChange/bindModeButtons：模式互斥与按钮绑定
 // - bindSlotDrag：选择器拖动吸附与联动回调
 // - bindUI(ctx, refs)：全部交互绑定（模式/选择器/硬币滑动/成绩/设置/重置）
 // - offsetOf(handle)：选择器轨道当前位移
 // - init()：启动装配入口
 // 设计理由：业务决策收拢装配层（参考项目同款），核心层纯函数零 IO；
-//   结果先由 toss 计算、动画 finalFace 对齐，不弄虚作假；
+//   结果先由 toss 计算、动画 guidedStep 精确落定（不弄虚作假、无角度差）；
+//   落定/停留/翻转定时器句柄入 ctx，由 resetGame 统一清理防竞态污染；
 //   错误入口统一页面提示不崩溃（降级不中断）
 // 异常处理：配置加载/骨架缺失/模式非法 fail-fast 中文提示；运行期交互零崩溃
 // 关联配置：config/rules.json、config/version.json、rules.js/game.js/coin.js/ui.js

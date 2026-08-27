@@ -9,7 +9,5 @@
   "guideSpeedFactor": 0.012,
   "resultHoldMs": 2000,
   "resetFlipMs": 1400,
-  "turns": 5,
-  "flipMs": 600,
   "configVersion": "rules-v1"
 }

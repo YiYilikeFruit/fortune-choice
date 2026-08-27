@@ -16,7 +16,6 @@
   --radius: 14px;
   --coin-size: min(58vw, 240px);
   --touch-min: 44px;
-  --idle-hint-ms: 3200ms;
 }
 
 * {

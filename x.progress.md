@@ -1,7 +1,7 @@
 # 开发进度追踪（x.progress.md）
 
 > 依据：`z.plan.md`（幸运硬币选择方案报告，PL001）
-> 当前版本：V0.1.0.1（单一来源：`config/version.json`；AGENTS.md「版本号唯一来源」约定）
+> 当前版本：V0.1.0.2（单一来源：`config/version.json`；AGENTS.md「版本号唯一来源」约定）
 > 记录格式：状态 [⏳ 待开发, ✅ 已完成] / 优先级 [高, 中, 低]
 > 执行原则：每阶段完成后运行验证命令确认无回归，再进入下一阶段
 > 错误策略：不崩溃、不阻塞、有提示、能自愈——统一中文错误类型 / fail-fast 与明确回落并用 / 宽容解析（详见 AGENTS.md 错误策略主线）
@@ -11,7 +11,7 @@
 ## 阶段验证命令速查（AGENTS.md 运行与验证）
 
 ```shell
-# 无头回归总入口（PL001：5 个 verify_* 全量）
+# 无头回归总入口（PL001：4 个 verify_* 全量）
 python3 .temp/run_all.py                 # 全量回归（随机/规则/对局/硬币）
 node .temp/verify_random.js       # PL001.1 随机源：同/异 seed / 分布 / 派生
 node .temp/verify_rules.js        # PL001.2 规则契约：模式枚举 / Y≤X 约束 / 滑动参数 / 主题
@@ -31,7 +31,7 @@ node .temp/probe_pl001_ui.js      # PL001.6 UI 层（DOM stub）：模式区/数
 ### PL001 幸运硬币选择完整 MVP 实施（依据 z.plan.md PL001 方案，2026-08-27 规划）
 
 > 目标：模式互斥（三局两定/五局三定/自定义/一局定输赢）+ 3D 硬币滑动加速 + X局Y定收敛 + 加赛一局定生死 + 结果区与终局重置 + 成绩/设置浮窗 + seed 可复现 + 无头验证，纯 HTML5 单页应用（离线包整目录上传 Builder Hub）
-> 已拍板（2026-08-27）：模式三按钮互斥可取消（无按钮=一局定输赢）/ 数字条随时可滑按下"自定义"才生效且与预设不联动 / X∈[2,9]、Y∈[2,X] 且 Y≤X / 打满一半一半加赛一局定生死 / 硬币三面（展示面/yes/no）MVP emoji 2 套主题 / 停滑 3s 超时小浮窗提醒自动减速落定 / 每小局结果覆盖显示+局进度、硬币带翻转动画回展示面 / 终局最终答案+重置按钮（仅终局出现）/ 成绩浮窗会话内记录全部局结果 / 版本 V0.1.0.0
+> 已拍板（2026-08-27）：模式三按钮互斥可取消（无按钮=一局定输赢）/ 数字条随时可滑按下"自定义"才生效且与预设不联动 / X∈[2,9]、Y∈[2,X] 且 Y≤X / 打满一半一半加赛一局定生死 / 硬币三面（展示面/yes/no，注：现实现已改双面）MVP emoji 2 套主题 / 停滑 3s 超时小浮窗提醒自动减速落定 / 每小局结果覆盖显示+局进度、硬币带翻转动画回展示面 / 终局最终答案+重置按钮（仅终局出现）/ 成绩浮窗会话内记录全部局结果 / 版本 V0.1.0.0
 > 硬限制：沿用 PL001——禁 WebGL/WASM/Workers/eval/new Function/document.write/内联事件/外链 JS；依赖全内嵌离线包；业务核心（random/rules/game）纯函数零 DOM 依赖无头可测；动效只动 transform/opacity（CSS3 3D：perspective+rotateY+preserve-3d，守 WebView 渲染性能红线）；结果先由 game 计算，动画只是表现不弄虚作假
 > 版本归属：V0.1.0.0（PL001.8 定版同步）
 > 估算：核心逻辑 PL001.1-3 半天 / 硬币动画 PL001.4 半天 / 界面与配置 PL001.5-6 半天 / 验证收尾 PL001.7-8 约 2 小时
@@ -66,10 +66,10 @@ node .temp/probe_pl001_ui.js      # PL001.6 UI 层（DOM stub）：模式区/数
 
 - [x] PL001.4.a 三面 DOM 结构 + CSS 3D：展示面/yes/no 三面卡片，`perspective + rotateY + preserve-3d`，展示面为初始朝向——做法：coin.js 构建面容器，css/coin.css 3D 变换；验证：probe DOM stub 三面存在、初始朝向断言
 - [x] PL001.4.b 旋转速度模型：`tick(dt, velocity)` 速度衰减曲线（滑动累加速度，停滑后线性/指数衰减）+ 减速时长参数走 rules——做法：纯函数速度模型，参数外置不硬编码；验证：verify_coin 速度衰减单调、参数生效断言
-- [ ] PL001.4.c 滑动事件：touchstart/move/end 识别左右滑动，启动旋转；连续滑动叠加速度——做法：ui.js 绑定事件 → coin 速度累加，防误触（阈值判定）；验证：probe_pl001_ui 滑动事件行为断言
-- [ ] PL001.4.d 超时提醒：停滑开始计时，超过 idleTimeoutMs → 触发"是决定的时候了"小浮窗（UI 层）并开始减速——做法：计时器状态 + 回调；验证：probe_pl001_ui 计时触发断言
+- [x] PL001.4.c 滑动事件：touchstart/move/end 识别左右滑动，启动旋转；连续滑动叠加速度——做法：ui.js 绑定事件 → coin 速度累加，防误触（阈值判定）；验证：probe_pl001_ui 滑动事件行为断言
+- [x] PL001.4.d 超时提醒：停滑开始计时，超过 idleTimeoutMs → 触发"是决定的时候了"小浮窗（UI 层）并开始减速——做法：计时器状态 + 回调；验证：probe_pl001_ui 计时触发断言
 - [x] PL001.4.e 减速落定：累计角 → 终面朝向计算（初始角 + 累计旋转角 → 模 360 判定 yes/no 面朝上），落定结果 = game 计算结果（不弄虚作假）——做法：`finalFace(angle, gameDecision)` 纯函数，动画终态对齐计算结果；验证：verify_coin 终面角与计算结果一致断言
-- [ ] PL001.4.f 翻转回展示面动画：落定后带动画 rotateY 回 0 度（展示面朝上），供下一局——做法：翻转动画 transform 过渡；验证：probe_pl001_ui 翻转回调断言
+- [x] PL001.4.f 翻转回展示面动画：落定后带动画 rotateY 回 0 度（展示面朝上），供下一局——做法：翻转动画 transform 过渡；验证：probe_pl001_ui 翻转回调断言
 - [x] PL001.4.g verify_coin.js 落地（纯计算部分 + stub DOM）：速度衰减 / 终面角 / 三面结构——验证：node verify_coin 0 失败
 
 #### PL001.5 配置落地（config/version.json + config/rules.json）
@@ -83,17 +83,17 @@ node .temp/probe_pl001_ui.js      # PL001.6 UI 层（DOM stub）：模式区/数
 - [x] PL001.6.a index.html 入口：模式区 / 数字选择器 / 硬币区 / 结果展示区 / 成绩按钮 / 设置按钮 / 浮层容器区块挂载；零内联事件（addEventListener 统一绑定）——验证：grep 断言零 onclick/onload 等内联 handler
 - [x] PL001.6.b 模式按钮互斥：三局两定/五局三定/自定义三按钮按下态高亮，再按取消，至多一个按下；无按钮 = 一局定输赢——做法：ui.js 按钮状态机 + css 按下态；验证：probe_pl001_ui 互斥/取消/默认态断言
 - [x] PL001.6.c 数字滑动选择器：局/定两个横向滑动数字条（1-9 中文数字），左右滑动吸附最近数字，选中放大弹跳 + 高亮带；局变化时定可用区间实时收窄 [2,X]，越界置灰——做法：ui.js 滑动选择器 + css 动画；验证：probe_pl001_ui 吸附/联动/置灰断言
-- [ ] PL001.6.d 硬币渲染：三面切换（展示面/yes/no），2 套主题 emoji 经设置切换，初始展示面朝上——做法：ui.js 渲染 + coin.js 动画配合；验证：probe_pl001_ui 三面渲染/主题切换断言
-- [ ] PL001.6.e 结果展示区：每局落定显示"第 X 局：YES/NO"（覆盖旧文字）+ 局进度指示；终局显示最终答案 + 重置按钮（仅终局出现）——做法：ui.js 结果区渲染 + 状态驱动；验证：probe_pl001_ui 覆盖显示/进度/终局按钮出现断言
-- [ ] PL001.6.f 成绩浮窗：点击成绩按钮浮出不遮页面浮窗，列表记录本轮全部局结果（会话内有效）——做法：浮窗组件，只读渲染；验证：probe_pl001_ui 浮窗内容断言
-- [ ] PL001.6.g 设置浮窗：点击设置按钮浮出，切换硬币主题（2 套）——做法：浮窗组件 + 主题切换回调；验证：probe_pl001_ui 切换生效断言
-- [ ] PL001.6.h 单屏自适应：强制单屏（100dvh + overflow hidden），硬币区 flex 吸收剩余，320/375/430 断点，`env(safe-area-inset-_)` 全覆盖，点击区 ≥44px——做法：css/coin.css 布局 + :root 变量；验证：浏览器 eval 无滚动断言 + 多档目检
-- [ ] PL001.6.i main.js 启动装配：加载配置 → createGame → 对局编排（滑动→旋转→超时→落定→结果→下一局/终局）→ 错误入口统一提示不崩溃（降级不中断）——做法：main.js 装配层；验证：浏览器冒烟（agent-browser 端到端一局/多局/加赛/重置全链路）
+- [x] PL001.6.d 硬币渲染：双面（yes/no）渲染 + 待机展示面（双面均显主题图），2 套主题 emoji 经设置切换，初始展示面朝上——做法：ui.js renderCoinTheme/setCoinShowFace + coin.js 动画配合；验证：probe_pl001_ui 双面渲染/主题切换断言
+- [x] PL001.6.e 结果展示区（部分：覆盖显示已实现，局进度指示待补）：每局落定显示"第 X 局：YES/NO"（覆盖旧文字）；终局显示最终答案 + 重置按钮（仅终局出现）——做法：ui.js 结果区渲染 + 状态驱动；验证：probe_pl001_ui 覆盖显示/终局按钮出现断言
+- [x] PL001.6.f 成绩浮窗：点击成绩按钮浮出不遮页面浮窗，列表记录本轮全部局结果（会话内有效）——做法：浮窗组件，只读渲染；验证：probe_pl001_ui 浮窗内容断言
+- [x] PL001.6.g 设置浮窗：点击设置按钮浮出，切换硬币主题（2 套）——做法：浮窗组件 + 主题切换回调；验证：probe_pl001_ui 切换生效断言
+- [x] PL001.6.h 单屏自适应：强制单屏（100dvh + overflow hidden），硬币区 flex 吸收剩余，320/375/430 断点，`env(safe-area-inset-_)` 全覆盖，点击区 ≥44px——做法：css/coin.css 布局 + :root 变量；验证：浏览器 eval 无滚动断言 + 多档目检
+- [x] PL001.6.i main.js 启动装配：加载配置 → createGame → 对局编排（滑动→旋转→超时→落定→结果→下一局/终局）→ 错误入口统一提示不崩溃（降级不中断）——做法：main.js 装配层；验证：浏览器冒烟（agent-browser 端到端一局/多局/加赛/重置全链路）
 
 #### PL001.7 无头回归编排（.temp/run_all.py）
 
 - [x] PL001.7.a run_all.py：枚举执行全部 verify_*（node 子进程）统一出口计数汇总，任一失败非零退出——做法：参考参考项目 run_all.py 写法；验证：注入临时失败脚本断言非零退出
-- [x] PL001.7.b 全量回归 = 全部 verify_* 0 失败；校验**不变量**为主，禁止写死易变值（A018 验证纪律：版本/日期/路径/计数不写死，用正则/动态读取）——验证：run_all.py 0 失败（5 脚本全绿）
+- [x] PL001.7.b 全量回归 = 全部 verify_* 0 失败；校验**不变量**为主，禁止写死易变值（A018 验证纪律：版本/日期/路径/计数不写死，用正则/动态读取）——验证：run_all.py 0 失败（4 脚本全绿）
 
 #### PL001.8 文档同步与版本定版
 
@@ -110,3 +110,49 @@ node .temp/probe_pl001_ui.js      # PL001.6 UI 层（DOM stub）：模式区/数
   - 正文：`- 模式互斥单选（三局两定/五局三定/自定义/一局定输赢），自定义数字滑动选择器 Y≤X 联动` / `- X局Y定收敛与加赛一局定生死` / `- 硬币三面 2 套主题，CSS3 3D 旋转，滑动加速超时自动落定` / `- 成绩与设置浮窗，终局重置`
   - git add 清单（用户审阅后自行执行）：index.html package.json css/coin.css js/ config/ .temp/（verify__.js probe__.js run_all.py assert_lite.mjs）AGENTS.md README.md z.plan.md x.progress.md .gitignore .opencode/skills/
   - 验证：用户审阅后自行 git add/commit/push（AI 不执行 git 写操作）
+
+---
+
+## A. 第1轮审计修复任务清单（依据 z.plan.md 附录 A001，2026-08-28）
+
+> 状态：✅ 已完成（2026-08-28：A2-A4 全部完成，run_all 6/6 + 2 probe + verify_a_fixes 29/29 + verify_a_accept 5/5 全绿）；优先级：A2（P2 并发）→ A3（P3 清理）→ A4（验证收尾）
+> 报告：z.plan.md 附录 A001（编号 A001，经用户确认）；观察项 5 条经逐条评估全部提升为 P3-10~P3-14
+
+#### A2 P2 级修复
+
+- [x] A2.1 定时器竞态清理 —— js/main.js settle 三层定时器句柄入 ctx（holdId/flipId）+ resetGame 统一 clearTimeout（含 idleTimer）；验证：verify_a_fixes 句柄断言 + 反向验收 5/5（2026-08-28）
+
+#### A3 P3 级修复
+
+- [x] A3.1 README 三面改双面 —— README.md 特性"双面翻转"、结构注释"双面角"、rules.json 注释"落点引导/结果停留"；验证：verify_a_fixes 断言（2026-08-28）
+- [x] A3.2 coin.js 模块说明改写 —— js/coin.js 头部/尾部说明与 FACE_ANGLES/异常注释删 cover 描述，改"展示面由硬币本体双面呈现"；验证：rg cover 清零（2026-08-28）
+- [x] A3.3 ui.js 说明与死 import —— js/ui.js 说明改"双面角"、删 FACE_ANGLES import；验证：node --check（2026-08-28）
+- [x] A3.4 x.progress 勾选修正 —— PL001.4.c/d/f、6.d/f/g/h/i 勾选 [x]（6.e 标注部分：覆盖显示已完成、局进度指示待补）；verify 数量改 4；验证：verify_a_fixes 断言（2026-08-28）
+- [x] A3.5 turns/flipMs 配置死键 —— rules.js REQUIRED_KEYS/validateRules/return 移除、config/rules.json 删两键、verify_rules 同步；验证：verify_rules 54/54 + verify_a_accept 真实 config 不阻塞（2026-08-28）
+- [x] A3.6 死代码清理 —— main.js/ui.js 删死 import（guidedVelocity/FACE_ANGLES）、css 删 --idle-hint-ms；DEFAULT_MODE/guidedVelocity/faceAtAngle 保留（verify 测试契约）；验证：verify_a_fixes 断言（2026-08-28）
+- [x] A3.7 窄屏 slot 吸附 —— ui.js buildSlot itemW 改 items[0].offsetWidth 实测（fallback 44）；验证：verify_a_fixes 断言（2026-08-28）
+- [x] A3.8 拖动 transition 滞后 —— ui.js setOffset 禁 transition（跟手）、setIndex 恢复；验证：verify_a_fixes 断言（2026-08-28）
+- [x] A3.9 seed 可复现可见性 —— main.js settle 终局 renderProgress 展示 `seed: ${ctx.game.seed}`；验证：verify_a_fixes 断言（2026-08-28）
+- [x] A3.10 settle 400ms 简化 —— main.js settle 删 Math.max(400,diff*3) 过渡与 400ms 外层延迟（引导已精确落定）；验证：verify_a_fixes + verify_a_accept 收敛无回归（2026-08-28）
+- [x] A3.11 score.push 冗余三元 —— main.js 终局分支简化为 ctx.game.decision；验证：verify_a_fixes 断言（2026-08-28）
+- [x] A3.12 init 错误条防注入 —— main.js catch 改 createElement+textContent；验证：verify_a_fixes 断言（2026-08-28）
+- [x] A3.13 slot-y aria 补齐 —— index.html #slot-y 加 aria-valuemin="2" aria-valuemax="9"；验证：verify_a_fixes 断言（2026-08-28）
+- [x] A3.14 历史三面快照加注 —— z.plan.md 5 处 + x.progress.md:34 补"（注：现实现已改双面）"；验证：verify_a_fixes 断言（2026-08-28）
+
+#### A4 验证与收尾
+
+- [x] A4.1 全量回归 —— run_all 6/6（含 verify_a_fixes）+ probe 2 个 + verify_a_accept 5/5 + 冒烟 import 全模块 OK；验证：0 失败（2026-08-28）
+- [x] A4.2 commit 草稿 —— git add 清单 + message（feat: V0.1.0.1 含审计修复），见下方；验证：用户审阅
+
+### commit 草稿（V2 规范，2026-08-28 A 系列，版本 V0.1.0.2）
+
+- 标题：`fix: V0.1.0.2，首轮代码审计修复（定时器竞态/配置清理/交互优化/文档同步）`
+- 正文：
+  - `- 修复对局竞态：落定/停留/翻转定时器由重置统一清理，切换模式不再污染新局成绩与硬币状态`
+  - `- 移除 turns/flipMs 无效配置，清理无用 import 与样式变量，落定流程去掉多余过渡`
+  - `- 终局展示本局 seed，同一 seed 可复现整局结果（可解释可复现）`
+  - `- 自定义数字选择器吸附按实际宽度校准（窄屏不错位），拖动跟手不滞后`
+  - `- 启动失败错误条改为纯文本防注入；定数选择器补齐无障碍属性`
+  - `- 文档同步：README 与模块说明三面改双面，进度清单勾选修正，历史条目加注（审计报告见 z.plan 附录）`
+  - `- 版本推进 V0.1.0.2`
+- git add 清单（用户审阅后自行执行）：config/rules.json config/version.json css/coin.css index.html js/coin.js js/main.js js/rules.js js/ui.js README.md x.progress.md z.plan.md

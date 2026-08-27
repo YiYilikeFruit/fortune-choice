@@ -32,8 +32,6 @@ export const REQUIRED_KEYS = [
   "guideSpeedThreshold",
   "guideMinRemainingDeg",
   "guideSpeedFactor",
-  "turns",
-  "flipMs",
   "resultHoldMs",
   "resetFlipMs",
 ];
@@ -88,7 +86,7 @@ export function validateGameConfig({ x, y } = {}) {
 
 // 校验并规范化规则配置：必填拦截 + 值域口径 + 模式枚举白名单
 // 输入：raw 装配层 JSON.parse 后的规则对象
-// 输出：规范化对象 { defaultMode, idleTimeoutMs, accelFactor, decelDurationMs, turns, flipMs, configVersion }
+// 输出：规范化对象 { defaultMode, idleTimeoutMs, accelFactor, decelDurationMs, ...结果面停留/翻转, configVersion }
 // 异常：非对象 / 缺必填键 / defaultMode 不在 MODES / 数值越界 → 中文 fail-fast
 export function validateRules(raw) {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
@@ -162,18 +160,6 @@ export function validateRules(raw) {
     );
   }
 
-  const turns = toNumber(raw.turns, "turns ");
-  if (!Number.isInteger(turns) || turns < 0) {
-    throw new Error(`turns 必须是非负整数（旋转圈数），收到：${raw.turns}`);
-  }
-
-  const flipMs = toNumber(raw.flipMs, "flipMs ");
-  if (flipMs <= 0) {
-    throw new Error(
-      `flipMs 必须是正数（翻转回展示面毫秒），收到：${raw.flipMs}`,
-    );
-  }
-
   const resultHoldMs = toNumber(raw.resultHoldMs, "resultHoldMs ");
   if (resultHoldMs <= 0) {
     throw new Error(
@@ -197,8 +183,6 @@ export function validateRules(raw) {
     guideSpeedThreshold,
     guideMinRemainingDeg,
     guideSpeedFactor,
-    turns,
-    flipMs,
     resultHoldMs,
     resetFlipMs,
     configVersion:

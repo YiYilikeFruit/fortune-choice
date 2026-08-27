@@ -1,13 +1,14 @@
 // ============================================================
 // 幸运硬币选择 - 硬币 3D 动画（纯计算内核，零 DOM 依赖）
 // 设计要点：硬币本体为**双面**（yes 正面 0° / no 背面 180°），
-// 绕自身中心轴旋转（transform-origin: center，CSS 侧）；展示面为
-// 独立 cover（不参与旋转，旋转开始即消失）。速度衰减与终面朝向
-// 为纯函数（无头可测）；动画终态对齐 game 计算结果（finalFace 不弄虚作假）。
+// 绕自身中心轴旋转（transform-origin: center，CSS 侧）；待机时
+// 展示面由硬币本体呈现（双面均渲染展示面，见 ui.setCoinShowFace）。
+// 速度衰减与终面朝向为纯函数（无头可测）；动画终态对齐 game 计算结果
+// （finalFace/guidedStep 不弄虚作假）。
 // 关联配置：config/rules.json 的减速时长等动画参数。
 // ============================================================
 
-// 双面朝上角（绕自身中心轴 Y，单位度）：yes 0° / no 180°；show 为 cover 参考角（不参与旋转）
+// 双面朝上角（绕自身中心轴 Y，单位度）：yes 0° / no 180°；show 为待机展示参考
 export const FACE_ANGLES = Object.freeze({
   show: 0,
   yes: 0,
@@ -29,7 +30,7 @@ export function tick(dt, velocity, decelDurationMs) {
 
 // 终面朝向：给定当前累计旋转角，计算使决策面朝上的最小目标总角（≥ 当前角）
 // 输入：angle 当前累计旋转角（度）、decision（"yes" | "no"）；输出：目标总角（度）
-// 异常：decision 非法（含 show，展示面为 cover 不参与落定）→ 中文 fail-fast
+// 异常：decision 非法（含 show，展示面不参与落定）→ 中文 fail-fast
 export function finalFace(angle, decision) {
   if (decision !== "yes" && decision !== "no") {
     throw new Error(
@@ -88,12 +89,13 @@ export function faceAtAngle(angle) {
 
 // ===== js/coin.js 模块说明 =====
 // 常量与函数清单：
-// - FACE_ANGLES：双面朝上角（yes 0° / no 180°；show 为 cover 参考角）
+// - FACE_ANGLES：双面朝上角（yes 0° / no 180°；show 为待机展示参考）
 // - tick(dt, velocity, decelDurationMs)：指数速度衰减内核，阈值归 0
 // - finalFace(angle, decision)：由当前累计角与决策面算最小目标总角（终面=决策，不弄虚作假）
+// - guidedVelocity / guidedStep：落点引导（速度比例收敛，精确落定无角度差）
 // - faceAtAngle(angle)：角度→朝上面（最近半圈），供一致性断言与 UI 呈现
 // 设计理由：旋转物理（速度衰减）与落点（终面朝向）抽为纯函数，无头可测、
-//   与 game 计算结果严格对齐；硬币双面（yes/no）翻转，展示面为独立 cover
-//   在旋转开始即消失（用户口径：展示面消失后只剩 yes/no）；动效参数走 rules
+//   与 game 计算结果严格对齐；硬币双面（yes/no）翻转，展示面由硬币本体呈现
+//   （待机双面渲染展示面、抛掷渲染 yes/no）；动效参数走 rules
 // 异常处理：finalFace decision 非法 fail-fast；tick/faceAtAngle 纯计算不抛错
 // 关联配置：config/rules.json 减速时长；消费方 ui.js/main.js（动画表现层）
