@@ -103,8 +103,8 @@ fortune-choice/
 ## PL001. 幸运硬币选择完整 MVP 实施方案（2026-08-27）
 
 > 来源：小红书小工具技术规范 + 与用户多轮对齐拍板（2026-08-27：模式互斥 / X局Y定 / 加赛定生死 / 硬币三面 2 套主题（注：现实现已改双面） / 滑动加速 3s 超时 / 结果区与终局重置 / 成绩会话内）
-> 状态：✅ 已实施（V0.1.0.2，2026-08-28：双面硬币 + 落点引导精确落定 + 结果面停留翻转 + 交互打磨，首轮审计 A001 修复（定时器竞态/配置清理/交互优化/文档同步）全部落地；无头回归 6 脚本 + 2 探针全绿；浏览器端到端视觉待目检）
-> 目标版本：V0.1.0.2
+> 状态：✅ 已实施（V0.1.0.3，2026-08-28：双面硬币 + 落点引导精确落定 + 结果面停留翻转 + 交互打磨，首轮审计 A001 修复（定时器竞态/配置清理/交互优化/文档同步）全部落地；无头回归 6 脚本 + 2 探针全绿；浏览器端到端视觉已目检）
+> 目标版本：V0.1.0.3
 
 ### 目标形态
 
@@ -159,6 +159,83 @@ fortune-choice/
 8. **终局**：结果区显示最终答案 + 重置按钮（仅终局出现），点击整轮归零
 9. **成绩**：浮窗记录本轮全部局结果，会话内有效（不持久化）
 10. **版本**：V0.1.0.0（version.json 单点 + README 徽章 + x.progress 版本行 + z.plan 状态行同步）
+
+---
+
+## PL002. 硬币立体化：3D 圆柱侧面与滚花/齿环（2026-08-28 定案）
+
+> 来源：与用户讨论（2026-08-28：双面卡片旋转无厚度感，真实硬币有滚花侧边）
+> 状态：📌 待实施（PL002 任务清单见 x.progress.md）
+
+### 背景
+
+- 当前硬币为双面卡片（yes/no 两平面，backface-visibility hidden），旋转时像纸片翻转，无厚度感
+- 真实硬币边缘为滚花（reeded edge），刻在侧面厚度上；正面外轮廓仍正圆
+- 用户诉求：与真实硬币一致——侧面有厚度 + 滚花锯齿，正面外圈带齿环（插画风），两者都要
+
+### 决策结论（2026-08-28 与用户确认）
+
+1. **方案 A + B 都要**：CSS 3D 圆柱侧面（真厚度 + 侧面滚花）+ 正面外圈齿环（repeating-conic-gradient 装饰）
+2. **侧面厚度 8~12px**，默认取 10px（走 :root 变量）
+3. **接受 24~36 DOM 元素开销**：默认 24 片（弧长≈31px/片，D=240px）；低端机降 16 片或退化为仅齿环
+4. **面保持中心原位**：圆柱壁做在面外圈（正面被面完全遮挡、旋转到侧面才露出），JS 旋转/落定逻辑零改动
+5. **齿环不遮居中 emoji**：mask 保留外圈 68%~100% 半径环带
+6. **参数走 css :root 变量**（--coin-thick/--coin-seg/--coin-rim-*）：纯视觉参数不入 config（沿用 --coin-size 先例）
+7. **主题壁色由 theme.color 派生**（亮/暗），renderCoinTheme 同步，换主题壁跟着换
+
+### 设计要点
+
+- 结构：#coin 内新增 .coin-edge（preserve-3d）→ N 个 .edge-seg，`transform: rotateY(i×360/N) translateZ(R)`；每片宽=厚度 10px、高=弧长，直条近似圆筒
+- 滚花：.edge-seg 背景 `repeating-linear-gradient` 竖条纹 + 金属渐变，旋转到侧面朝前时呈现齿纹
+- 齿环：.face::after + `repeating-conic-gradient`（每 6° 一齿）+ `-webkit-mask: radial-gradient` 只留外圈
+- 约束核查：纯 CSS3 3D + 渐变，无 eval/WebGL/Worker/外链；动效仍 transform（守性能红线）
+- 涉及文件：css/coin.css、js/ui.js（buildCoinEdge + renderCoinTheme 同步壁色）、js/main.js（init 调用 buildCoinEdge）
+- 不涉及：game.js/random.js/rules.js（纯逻辑零改动）
+
+### 关联
+
+- 版本：V0.1.0.3（2026-08-28 随 PL002/PL003 提交推进）
+- 验证：无头探针断言 seg 数量与角度分布（.temp/verify_pl002_edge.js）+ 浏览器目检（侧面滚花 / 正面齿环 / 旋转流畅度）
+
+---
+
+## PL003. 硬币拟物化：写实金属质感（2026-08-28 定案）
+
+> 来源：与用户讨论（2026-08-28：当前面片单色 + 单高光点，金属感缺失像贴纸；用户选择写实档）
+> 状态：📌 待实施（PL003 任务清单见 x.progress.md）
+
+### 背景
+
+- 当前硬币面片 = 单一主题色 + 一个 `radial-gradient at 38% 32%` 高光点 + inset 底部阴影，无金属质感（贴纸/饼干感）
+- 拟物化短板：无倒角边缘轮廓光、材质为单色（金/银各一色 + shadeHex 派生）、高光非各向异性、无表面肌理与压印、齿边与滚花缺过渡、无接触阴影
+- 用户选择：写实档（全做）；missed 4（落定高光闪烁彩蛋）不做，记入 y.problem.md 待评估
+
+### 决策结论（2026-08-28 与用户确认）
+
+1. **写实档全做**：倒角轮廓光 / 金·银材质光谱 / 高光升级 / 肌理+浮雕 / 齿边斜纹+过渡环 / 接触阴影 + 动效侧 3 项（落定 bounce / 翻转手感 / prefers-reduced-motion）
+2. **高光跟随问题选方案 A**：渐变绑定面片本地坐标，接受"光泽随表面游走"（等价环境贴图随物体）；不做 JS 逐帧平移高光（违反"动效只动 transform/opacity"性能红线）
+3. **肌理用 SVG feTurbulence data-URI 静态贴图**：WebView 支持 SVG、旋转走 GPU transform 不重采样；emoji 浮雕用 drop-shadow 双层反向 1px 影（经典 emboss，需 feel-check backface-visibility Safari 坑）
+4. **材质 palette**：THEMES 每主题新增 5 色 palette（hi/light/base/dark/deep），金暖银冷色相拉开；保留 color 字段兼容现有契约（verify_rules / renderCoinTheme）
+5. **光影统一**：所有面高光方位一致（保持 38%32% 顶光体系）；倒角上弧亮下弧暗；侧面 seg 亮顶暗底——三处同光源
+6. **接触阴影独立固定层**：#coin-stage 下椭圆软影，不随 #coin rotateY 旋转
+7. **动效 3 项**：落定 bounce（scale 0.97→1，约 150ms，纯表现不改变结果角）；翻转回展示面改 ease-in-out + 轻微 overshoot（去推走感）；`@media (prefers-reduced-motion: reduce)` 旋转快进到落定面保留透明度过渡
+8. **不做**：高光闪烁彩蛋（→ y.problem.md 📌 待评估）；JS 逐帧动高光（性能红线）
+
+### 设计要点
+
+- 面片：多层 radial-gradient 叠出金属圆盘（左上椭圆光带 + 主色曲率明暗 + 右下环境反光 + 边缘径向暗晕）+ conic 倒角环（上亮下暗，mask 成圆环）
+- 倒角：面外圈环形渐变，与侧面 seg 顶部亮边衔接，形成"圆碟"轮廓
+- 肌理：SVG turbulence data-URI 作 background-image（低透明度叠加，静态一次合成）
+- 齿环：repeating-conic-gradient 保留 144 齿，mask 外圈留 2-3% 亮边过渡；侧面滚花条纹 90°→75° 斜齿（reeded edge 斜度）
+- 动效：frame 落定后加 150ms scale 弹回；settle 翻转 transition 曲线改 ease-in-out + overshoot；reduced-motion 分支（结果快照直接展示落定面）
+- 约束核查：纯 CSS 渐变 + SVG 静态贴图 + filter（静态），无 WebGL/Worker/实时 filter 重算；动效仍只动 transform/opacity
+- 涉及文件：css/coin.css、js/ui.js（面片/倒角/阴影渲染 + renderCoinTheme 取 palette）、js/rules.js（THEMES palette）
+- 不涉及：game.js/random.js/coin.js（纯逻辑零改动）
+
+### 关联
+
+- 版本：V0.1.0.3（2026-08-28 随 PL002/PL003 提交推进）
+- 验证：无头探针断言 palette 结构/渐变层/动效曲线/斜纹角度（.temp/verify_pl003_*）+ 浏览器目检（金/银质感、旋转光影、落定 bounce、翻转手感、reduced-motion）
 
 ---
 

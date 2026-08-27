@@ -1,7 +1,7 @@
 # 开发进度追踪（x.progress.md）
 
 > 依据：`z.plan.md`（幸运硬币选择方案报告，PL001）
-> 当前版本：V0.1.0.2（单一来源：`config/version.json`；AGENTS.md「版本号唯一来源」约定）
+> 当前版本：V0.1.0.3（单一来源：`config/version.json`；AGENTS.md「版本号唯一来源」约定）
 > 记录格式：状态 [⏳ 待开发, ✅ 已完成] / 优先级 [高, 中, 低]
 > 执行原则：每阶段完成后运行验证命令确认无回归，再进入下一阶段
 > 错误策略：不崩溃、不阻塞、有提示、能自愈——统一中文错误类型 / fail-fast 与明确回落并用 / 宽容解析（详见 AGENTS.md 错误策略主线）
@@ -156,3 +156,84 @@ node .temp/probe_pl001_ui.js      # PL001.6 UI 层（DOM stub）：模式区/数
   - `- 文档同步：README 与模块说明三面改双面，进度清单勾选修正，历史条目加注（审计报告见 z.plan 附录）`
   - `- 版本推进 V0.1.0.2`
 - git add 清单（用户审阅后自行执行）：config/rules.json config/version.json css/coin.css index.html js/coin.js js/main.js js/rules.js js/ui.js README.md x.progress.md z.plan.md
+
+---
+
+## PL002. 硬币立体化任务清单（依据 z.plan.md PL002，2026-08-28）
+
+> 状态：✅ 已实施（2026-08-28：PL002.1-3 全部落地，verify_pl002_edge 30/30 + 回归 7/7 + 冒烟 OK；浏览器目检待用户确认）；分组：PL002.1 css → PL002.2 ui.js → PL002.3 main.js → PL002.4 验证收尾
+> 方案：z.plan.md PL002（圆柱侧面 + 正面齿环，8~12px 厚度，参数走 :root 变量）
+
+#### PL002.1 CSS 圆柱壁与齿环样式
+
+- [x] PL002.1.a :root 立体化参数 —— css/coin.css :root 新增 `--coin-thick: 10px` / `--coin-seg: 24` / `--coin-edge` / `--coin-rim-hi/lo`；验证：grep 断言（2026-08-28）
+- [x] PL002.1.b .coin-edge/.edge-seg 圆柱壁 —— css/coin.css 新增壁容器（preserve-3d + pointer-events none）与 seg（宽=弧长/高=厚度由 JS 设，滚花 repeating-linear-gradient + 金属渐变）；验证：verify_pl002_edge 结构断言（2026-08-28）
+- [x] PL002.1.c .face::after 正面齿环 —— css/coin.css 齿环（repeating-conic-gradient 每 6° 一齿 + -webkit-mask radial 只留外圈 68%~100%，不遮居中 emoji）；验证：grep 断言（2026-08-28）
+
+#### PL002.2 ui.js 渲染
+
+- [x] PL002.2.a buildCoinEdge(coinEl, n, radius, thick) —— js/ui.js 新增函数生成 N 个 .edge-seg（transform `rotateY(i×360/N) translateZ(R)`，宽=弧长 2πR/N、高=thick），返回 seg 数组；验证：node 探针断言数量/角度/尺寸（2026-08-28）
+- [x] PL002.2.b renderCoinTheme 同步壁色 —— js/ui.js renderCoinTheme 写 --coin-edge=主题色、--coin-rim-hi=主题色、--coin-rim-lo=shadeHex(色,0.62)（新增内部 shadeHex）；验证：probe_pl001_ui 主题切换（2026-08-28）
+
+#### PL002.3 main.js 集成
+
+- [x] PL002.3.a init 调用 buildCoinEdge —— js/main.js init 读 :root 变量（--coin-seg/--coin-size/--coin-thick）构建圆柱壁；resetGame 待机也 renderCoinTheme 同步壁色再覆盖展示面；验证：冒烟 import + verify_pl002_edge（2026-08-28）
+
+#### PL002.4 验证与收尾
+
+- [x] PL002.4.a 无头探针 .temp/verify_pl002_edge.js —— 断言 buildCoinEdge 生成 24 seg、角度均匀分布（每片 360/24）、translateZ=120、宽=弧长 31.4px、高=10px；验证：node 30/30 PASS（2026-08-28）
+- [x] PL002.4.b 全量回归 + 目检 —— run_all 7/7 + 2 probe + verify_a_fixes/accept 全绿（2026-08-28 已跑）；**浏览器目检待用户确认**（侧面滚花 / 正面齿环 / 旋转流畅，低端机片数可调）；验证：用户刷新页面目检
+
+---
+
+## PL003. 硬币拟物化任务清单（依据 z.plan.md PL003，2026-08-28）
+
+> 状态：✅ 已实施（2026-08-28：PL003.1-6 全部落地，verify_pl003 39/39 + 回归 8/8 + 冒烟 OK；浏览器目检待用户确认）；分组：PL003.1 rules.js palette → PL003.2 css 面片/倒角 → PL003.3 肌理/浮雕 → PL003.4 齿边/滚花 → PL003.5 接触阴影 → PL003.6 动效 → PL003.7 验证收尾
+> 方案：z.plan.md PL003（写实金属质感：金/银材质光谱 + 高光/倒角/肌理 + 动效手感；高光跟随取方案 A 本地渐变）
+
+#### PL003.1 材质 palette（rules.js）
+
+- [x] PL003.1.a THEMES 新增 palette 字段 —— js/rules.js gold/silver 各加 5 色（hi/light/base/dark/deep，金暖银冷色相拉开），保留 color 兼容现有契约；验证：verify_pl003 断言 palette 结构 + color 仍存在（2026-08-28 39/39）
+
+#### PL003.2 面片金属质感与倒角（css）
+
+- [x] PL003.2.a 面片多层金属渐变 —— css/coin.css .face-yes/no 改多层 radial-gradient（左上椭圆光带 + 曲率明暗 + 右下环境反光 + 边缘暗晕，光源方位统一 38%32%）；验证：verify_pl003 断言渐变层 + 目检（2026-08-28）
+- [x] PL003.2.b 倒角轮廓环 —— .face 外圈 conic 渐变（上弧亮下弧暗）+ mask 圆环，与侧面 seg 顶部亮边衔接；验证：verify_pl003 断言 ::before conic + mask 95%（2026-08-28）
+
+#### PL003.3 肌理与浮雕（css）
+
+- [x] PL003.3.a SVG turbulence 肌理贴图 —— .face 叠加 feTurbulence data-URI background（低透明度，静态一次合成，旋转不重采样）；验证：verify_pl003 断言 data-URI + 目检（2026-08-28）
+- [x] PL003.3.b emoji 浮雕 —— 面 emoji 包 .face-mark span + drop-shadow 双层反向 1px（亮影下暗影上，emboss）；验证：verify_pl003 断言 drop-shadow + 目检（含 Safari backface-visibility feel-check）（2026-08-28）
+
+#### PL003.4 齿边与滚花（css）
+
+- [x] PL003.4.a 齿环亮边过渡 —— .face::after mask 外圈留 2-3% 亮边（齿与面之间过渡环）；验证：verify_pl003 断言 mask 68%~95%（2026-08-28）
+- [x] PL003.4.b 侧面斜齿滚花 —— .edge-seg repeating-linear-gradient 90°→75° 斜条纹（reeded edge 斜度）；验证：verify_pl003 断言 75deg（2026-08-28）
+
+#### PL003.5 接触阴影（css）
+
+- [x] PL003.5.a 接触阴影层 —— #coin-stage 下加 .coin-shadow 椭圆软影（独立固定层，不随 rotateY 转）；验证：verify_pl003 断言 #coin-scene::after + 目检（2026-08-28）
+
+#### PL003.6 动效手感（css/main.js）
+
+- [x] PL003.6.a 落定 bounce —— frame 落定点后 150ms scale(0.97→1) 弹回（纯表现层不改变结果角，守 transform 红线）；验证：verify_pl003 断言 coin-bounce + 目检（2026-08-28）
+- [x] PL003.6.b 翻转回展示面手感 —— settle 翻转 transition 改 ease-in-out + 轻微 overshoot（180°+ 弹回，去"被推走"感）；验证：verify_pl003 断言 cubic-bezier(0.34,1.4,0.4,1)（2026-08-28）
+- [x] PL003.6.c prefers-reduced-motion —— css @media reduce 分支（关 coin 动画）+ main.js matchMedia 快进落定到结果面；验证：verify_pl003 断言 reduce 分支 + matchMedia（2026-08-28）
+
+#### PL003.7 验证与收尾
+
+- [x] PL003.7.a 无头探针 —— .temp/verify_pl003.js 断言 palette 结构/渐变层/动效曲线/斜纹角度；验证：node 39/39 PASS（2026-08-28）
+- [x] PL003.7.b 全量回归 + 目检 —— run_all 8/8 + 2 probe + verify_a_fixes 全绿 + 冒烟 OK（2026-08-28 已跑）；**浏览器目检通过（用户确认：金/银质感、旋转光影、落定 bounce、翻转手感、reduced-motion）**；版本推进 V0.1.0.3 四处同步，commit 草稿见下方
+
+### commit 草稿（V2 规范，2026-08-28 PL002+PL003，版本 V0.1.0.3）
+
+- git add 清单（10 文件）：
+  - `css/coin.css` `js/main.js` `js/rules.js` `js/ui.js` —— 立体化 + 拟物化实现
+  - `config/version.json` `README.md` —— 版本推进 V0.1.0.3
+  - `x.progress.md` `z.plan.md` `y.problem.md` —— 任务清单/方案/问题备忘
+- 标题：`feat: V0.1.0.3，硬币 3D 立体化与写实拟物（圆柱侧面/滚花齿环/金属材质/动效手感）`
+- 正文：
+  - `- 硬币 3D 圆柱侧面壁：真厚度 10px + 144 齿滚花与正面齿环一一对应`
+  - `- 面片写实金属质感：金/银五色材质光谱 + 倒角轮廓环 + 表面肌理 + emoji 浮雕`
+  - `- 接触阴影独立固定层（不随旋转）+ 落定 bounce + 翻转 overshoot + reduced-motion 快进`
+  - `- 版本推进 V0.1.0.3`

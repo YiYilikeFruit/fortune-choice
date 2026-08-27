@@ -38,16 +38,32 @@ export const REQUIRED_KEYS = [
 
 // 主题定义：2 套（MVP 用 emoji 占位，后续可替换为插画/配色）
 // faces.show 展示面（静止时朝上，无 yes/no 字样）/ faces.yes / faces.no
+// palette 材质光谱（PL003）：hi/light/base/dark/deep 五色，金暖银冷色相拉开；
+//   base 与 color 同源（契约兼容），供面片多层渐变/倒角/齿环取色
 export const THEMES = Object.freeze({
   gold: Object.freeze({
     name: "金币",
     faces: Object.freeze({ show: "🪙", yes: "✅", no: "❌" }),
     color: "#f0c75e",
+    palette: Object.freeze({
+      hi: "#fff6d8",
+      light: "#ffe9a0",
+      base: "#f0c75e",
+      dark: "#c9982f",
+      deep: "#8a6d1f",
+    }),
   }),
   silver: Object.freeze({
     name: "银币",
     faces: Object.freeze({ show: "🪙", yes: "👍", no: "👎" }),
     color: "#c9ccd1",
+    palette: Object.freeze({
+      hi: "#ffffff",
+      light: "#e8eaee",
+      base: "#c9ccd1",
+      dark: "#9aa0ab",
+      deep: "#6b7280",
+    }),
   }),
 });
 

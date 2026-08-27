@@ -49,6 +49,7 @@ export function collectRefs(doc = document) {
     "slot-y",
     "swipe-hint",
     "coin-stage",
+    "coin-scene",
     "coin",
     "round-result",
     "progress",
@@ -71,6 +72,7 @@ export function collectRefs(doc = document) {
     slotY: byId("slot-y"),
     swipeHint: byId("swipe-hint"),
     coinStage: byId("coin-stage"),
+    coinScene: byId("coin-scene"),
     coin,
     faces: {
       yes: coin ? coin.querySelector(".face-yes") : null,
@@ -162,19 +164,93 @@ export function buildSlot(slotEl) {
   };
 }
 
-// 渲染硬币主题：双面 emoji + 展示面（旋转前硬币本体即展示面）
-// 输入：refs（含 faces.yes/no）、theme 主题对象；输出：无
+// 颜色加深/减淡：hex → rgb 按系数缩放（齿环暗色等派生色用）
+// 输入：hex "#rrggbb"、factor 缩放系数（0-1）；输出：派生 hex
+// 异常：非法 hex 原样返回（渲染兜底不中断）
+function shadeHex(hex, factor) {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  const r = Math.round(((n >> 16) & 255) * factor);
+  const g = Math.round(((n >> 8) & 255) * factor);
+  const b = Math.round((n & 255) * factor);
+  return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
+}
+
+// 构建硬币侧面圆柱壁（PL002）：n 个窄条绕 Y 轴环排近似圆筒，滚花/金属渐变在 CSS
+// 输入：coinEl 硬币容器、n 分段数、radius 半径（px，取 --coin-size/2）、thick 厚度（px）、doc 文档对象
+// 输出：seg 元素数组（已挂载到 .coin-edge 内）
+// 异常：n/radius/thick 非有限 → 中文 fail-fast
+export function buildCoinEdge(coinEl, n, radius, thick, doc = document) {
+  if (
+    !Number.isFinite(n) ||
+    !Number.isFinite(radius) ||
+    !Number.isFinite(thick)
+  ) {
+    throw new Error(
+      `圆柱壁参数必须为有限数字，收到：n=${n} radius=${radius} thick=${thick}`,
+    );
+  }
+  const arc = (2 * Math.PI * radius) / n;
+  const edge = doc.createElement("div");
+  edge.className = "coin-edge";
+  // 每段弧长写入 CSS 变量，供滚花条纹（每段 2 齿、与正面齿环一一对应）取实际半径值
+  edge.style.setProperty("--seg-arc", `${arc}px`);
+  coinEl.appendChild(edge);
+  const segs = [];
+  for (let i = 0; i < n; i++) {
+    const seg = doc.createElement("div");
+    seg.className = "edge-seg";
+    seg.style.width = `${arc}px`;
+    seg.style.height = `${thick}px`;
+    // 负 margin 把元素中心对准容器中心（left:50% top:50% 只对齐左上角），
+    // 保证 translateZ(R) 从硬币中心沿半径外移，圆环与两面同心对齐
+    seg.style.marginLeft = `${-arc / 2}px`;
+    seg.style.marginTop = `${-thick / 2}px`;
+    seg.style.transform = `rotateY(${(i * 360) / n}deg) translateZ(${radius}px)`;
+    edge.appendChild(seg);
+    segs.push(seg);
+  }
+  return segs;
+}
+
+// 设置硬币面 emoji 标记（包 .face-mark span，供浮雕 filter 使用）
+// 输入：faceEl 面元素、text emoji；输出：无（无 span 时创建）
+function _setFaceMark(faceEl, text) {
+  let mark = faceEl.querySelector(".face-mark");
+  if (!mark) {
+    mark = document.createElement("span");
+    mark.className = "face-mark";
+    faceEl.appendChild(mark);
+  }
+  mark.textContent = text;
+}
+
+// 渲染硬币主题：双面 emoji + 展示面 + 材质 palette（面片/倒角/齿环取色）+ 侧面壁色
+// 输入：refs（含 faces.yes/no、coin）、theme 主题对象；输出：无
+// 说明（PL003）：palette 五色写入 #coin 容器（子面片继承），金暖银冷光谱
 export function renderCoinTheme(refs, theme) {
-  refs.faces.yes.textContent = theme.faces.yes;
-  refs.faces.no.textContent = theme.faces.no;
+  _setFaceMark(refs.faces.yes, theme.faces.yes);
+  _setFaceMark(refs.faces.no, theme.faces.no);
   refs.faces.yes.style.setProperty("--coin-face-yes", theme.color);
   refs.faces.no.style.setProperty("--coin-face-no", theme.color);
+  // 材质 palette（PL003）：金/银光谱写入 #coin 容器，面片多层渐变/倒角/齿环引用
+  const p = theme.palette;
+  refs.coin.style.setProperty("--coin-pal-hi", p.hi);
+  refs.coin.style.setProperty("--coin-pal-light", p.light);
+  refs.coin.style.setProperty("--coin-pal-base", p.base);
+  refs.coin.style.setProperty("--coin-pal-dark", p.dark);
+  refs.coin.style.setProperty("--coin-pal-deep", p.deep);
+  // 侧面壁色 = 主题色；齿环暗色 = 主题色加深（PL002）
+  refs.coin.style.setProperty("--coin-edge", theme.color);
+  refs.coin.style.setProperty("--coin-rim-hi", theme.color);
+  refs.coin.style.setProperty("--coin-rim-lo", shadeHex(theme.color, 0.62));
 }
 
 // 设置硬币指定面为展示面（待机态该面显示封面；转回时只改翻转后将朝前的背面）
 // 输入：refs（含 faces.yes/no）、theme 主题对象、which（"yes"|"no" 目标面）；输出：无
 export function setCoinShowFace(refs, theme, which) {
-  refs.faces[which].textContent = theme.faces.show;
+  _setFaceMark(refs.faces[which], theme.faces.show);
   refs.faces[which].style.setProperty(`--coin-face-${which}`, theme.color);
 }
 

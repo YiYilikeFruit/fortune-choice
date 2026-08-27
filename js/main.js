@@ -104,6 +104,8 @@ function resetGame(ctx, refs) {
   ctx.angle = 0;
   ctx.score = [];
   ui.setCoinAngle(refs.coin, 0);
+  // 壁色/齿环色随主题（PL002）：renderCoinTheme 设面与壁色，随后覆盖两面为展示面
+  ui.renderCoinTheme(refs, THEMES[ctx.theme]);
   // 初始/重置无结果，双面均为展示面
   ui.setCoinShowFace(refs, THEMES[ctx.theme], "yes");
   ui.setCoinShowFace(refs, THEMES[ctx.theme], "no");
@@ -140,6 +142,7 @@ function frame(ctx, refs, now) {
       ui.setCoinAngle(refs.coin, ctx.angle);
       ctx.rafId = null;
       settle(ctx, refs);
+      bounce(refs);
       return;
     }
     if (step.guiding) {
@@ -165,6 +168,23 @@ function frame(ctx, refs, now) {
   ctx.rafId = requestAnimationFrame((t) => frame(ctx, refs, t));
 }
 
+// prefers-reduced-motion 探测（PL003）：系统偏好减少动效时快进落定
+// 输入：无；输出：布尔（true = 需减少动效）
+function prefersReducedMotion() {
+  return (
+    typeof matchMedia !== "undefined" &&
+    matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
+// 落定冲击 bounce（PL003）：coin 外层短暂 scale(0.97→1) 弹回，纯表现层不动 rotateY
+// 输入：refs（含 coinScene）；输出：无（150ms 动画结束自动复位，下次触发需重启动画）
+function bounce(refs) {
+  refs.coinScene.classList.remove("coin-landed");
+  void refs.coinScene.offsetWidth; // 强制 reflow 重启动画
+  refs.coinScene.classList.add("coin-landed");
+}
+
 // 滑动触发：叠加旋转速度、重置超时计时；首次滑动先 toss 定本局结果
 // 输入：ctx、refs、deltaX 本次滑动位移；输出：无
 function onSwipe(ctx, refs, deltaX) {
@@ -185,6 +205,14 @@ function onSwipe(ctx, refs, deltaX) {
     ctx.game = setStatus(ctx.game, STATUS.ROTATING);
     // 硬币双面换成 yes/no，进入抛硬币
     ui.renderCoinTheme(refs, THEMES[ctx.theme]);
+    // 减少动效（PL003）：系统偏好 reduce 时跳过旋转动画，直接落定到结果面
+    if (prefersReducedMotion()) {
+      ctx.angle = ctx.pending.face === "yes" ? 0 : 180;
+      ctx.velocity = 0;
+      ctx.rafId = null;
+      settle(ctx, refs);
+      return;
+    }
   }
   const swipePower = Math.abs(deltaX) / 16;
   ctx.velocity = Math.min(
@@ -244,7 +272,9 @@ function settle(ctx, refs) {
     // 统一再转半圈（180°）：无论落在 yes(0°) 还是 no(180°)，
     // 转回都有可见旋转动画（直接归 0 在 yes 面时无视觉变化会跳变）
     ctx.angle += 180;
-    refs.coin.style.transition = `transform ${ctx.rules.resetFlipMs}ms cubic-bezier(0.4, 0, 0.2, 1)`;
+    // 翻转曲线（PL003）：ease-in-out + 轻微 overshoot（0.34,1.4,0.4,1），
+    // 180° 翻转带一点惯性回弹，去"被推走"的直线感
+    refs.coin.style.transition = `transform ${ctx.rules.resetFlipMs}ms cubic-bezier(0.34, 1.4, 0.4, 1)`;
     ui.setCoinAngle(refs.coin, ctx.angle);
     ctx.flipId = setTimeout(() => {
       refs.coin.style.transition = "none";
@@ -403,6 +433,14 @@ export async function init() {
     ctx.refs = refs;
     applyModeUI(ctx, refs);
     resetGame(ctx, refs);
+    // 硬币立体化（PL002）：读 :root 变量构建圆柱侧面壁（分段数/厚度/半径）
+    const cs = getComputedStyle(document.documentElement);
+    const segN = parseInt(cs.getPropertyValue("--coin-seg")) || 24;
+    // 半径取实际渲染尺寸（--coin-size 为 min(58vw,240px) 表达式，parseFloat 会失败，
+    // 且随断点变化；offsetWidth 为真实值，保证圆环与两面同尺寸对齐）
+    const coinSize = refs.coin.offsetWidth || 240;
+    const thick = parseFloat(cs.getPropertyValue("--coin-thick")) || 10;
+    ui.buildCoinEdge(refs.coin, segN, coinSize / 2, thick);
     bindUI(ctx, refs);
   } catch (e) {
     // 错误条用 textContent 赋值，避免配置内容含 HTML 标签时注入
@@ -428,6 +466,8 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
 // - createCtx(rules, version)：对局编排上下文（单例容器，含定时器句柄）
 // - resetGame(ctx, refs)：整轮重置（清理定时器防竞态、归零对局/硬币状态）
 // - frame(ctx, refs, now)：动画主循环——自由衰减 + 落点引导 guidedStep 精确落定
+// - prefersReducedMotion()：系统减少动效偏好探测（PL003，reduced 时快进落定）
+// - bounce(refs)：落定冲击（PL003，coin 外层 scale 0.97→1 弹回，纯表现不动 rotateY）
 // - onSwipe(ctx, refs, deltaX)：滑动加速 + 首次 toss 定本局结果 + 重置超时计时
 // - settle(ctx, refs)：落定——展示结果、终局暴露 seed 与重置按钮；非终局停留后翻转回展示面
 // - applyModeUI/onModeChange/bindModeButtons：模式互斥与按钮绑定

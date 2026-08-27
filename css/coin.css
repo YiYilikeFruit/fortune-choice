@@ -16,6 +16,14 @@
   --radius: 14px;
   --coin-size: min(58vw, 240px);
   --touch-min: 44px;
+  /* 硬币立体化参数（PL002）：侧面厚度 / 圆柱分段数 / 齿环亮暗色（壁色由主题派生） */
+  --coin-thick: 10px;
+  --coin-seg: 24;
+  --coin-edge: #b8903a;
+  --coin-rim-hi: #f0c75e;
+  --coin-rim-lo: #8a6d1f;
+  /* 齿周期（一齿 2.5° → 144 齿），与侧面滚花一一对应：侧面每段 6 齿 × 24 段 = 144 */
+  --coin-rim-step: 2.5deg;
 }
 
 * {
@@ -193,6 +201,52 @@ body {
   perspective: 1100px;
 }
 
+/* 接触阴影（PL003）：coin 下方椭圆软影（#coin-scene 不旋转，阴影不随 rotateY 转） */
+#coin-scene::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -28px;
+  width: 76%;
+  height: 24px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(0, 0, 0, 0.4),
+    transparent 68%
+  );
+  filter: blur(1px);
+  pointer-events: none;
+}
+
+/* 落定 bounce（PL003）：coin 外层短暂冲击下沉 scale(0.97→1) 弹回，纯表现不动 rotateY */
+#coin-scene.coin-landed {
+  animation: coin-bounce 150ms ease-out;
+}
+
+@keyframes coin-bounce {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(0.97);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* 减少动效（PL003）：系统偏好减少动效时关硬币过渡/弹跳动画（JS 侧同步快进落定） */
+@media (prefers-reduced-motion: reduce) {
+  #coin {
+    transition: none !important;
+  }
+  #coin-scene.coin-landed {
+    animation: none !important;
+  }
+}
+
 #coin {
   position: relative;
   width: var(--coin-size);
@@ -215,17 +269,146 @@ body {
 }
 
 .face-yes {
-  transform: rotateY(0deg);
+  transform: rotateY(0deg) translateZ(calc(var(--coin-thick) / 2));
   background:
-    radial-gradient(circle at 38% 32%, #fff9, transparent 60%),
-    var(--coin-face-yes, #0e9f6e);
+    /* 肌理：SVG feTurbulence 金属颗粒（data-URI 静态贴图，旋转 GPU transform 不重采样） */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23g)' opacity='0.3'/%3E%3C/svg%3E")
+      0 0 / 128px 128px,
+    /* 左上椭圆高光带（顶光 38%32% 光源体系；PL003 高光方案 A：绑定面片本地坐标） */
+    radial-gradient(
+        110% 70% at 34% 22%,
+        var(--coin-pal-hi, #fff6d8),
+        transparent 58%
+      ),
+    /* 边缘暗晕（圆润过渡，压暗外圈） */
+    radial-gradient(circle at 50% 50%, transparent 60%, rgba(0, 0, 0, 0.2) 100%),
+    /* 右下环境反光 */
+    radial-gradient(
+        90% 60% at 72% 88%,
+        rgba(255, 255, 255, 0.16),
+        transparent 55%
+      ),
+    /* 金属曲率明暗（light→base→dark→deep，金暖色相） */
+    radial-gradient(
+        circle at 50% 48%,
+        var(--coin-pal-light, #ffe9a0) 0%,
+        var(--coin-pal-base, #f0c75e) 48%,
+        var(--coin-pal-dark, #c9982f) 88%,
+        var(--coin-pal-deep, #8a6d1f) 100%
+      );
 }
 
 .face-no {
-  transform: rotateY(180deg);
+  transform: rotateY(180deg) translateZ(calc(var(--coin-thick) / 2));
   background:
-    radial-gradient(circle at 38% 32%, #fff9, transparent 60%),
-    var(--coin-face-no, #b0464f);
+    /* 肌理 + 高光带 + 暗晕 + 环境反光 + 曲率（与 face-yes 同光源体系） */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23g)' opacity='0.3'/%3E%3C/svg%3E")
+      0 0 / 128px 128px,
+    radial-gradient(
+      110% 70% at 34% 22%,
+      var(--coin-pal-hi, #fff6d8),
+      transparent 58%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      transparent 60%,
+      rgba(0, 0, 0, 0.2) 100%
+    ),
+    radial-gradient(
+      90% 60% at 72% 88%,
+      rgba(255, 255, 255, 0.16),
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at 50% 48%,
+      var(--coin-pal-light, #e8eaee) 0%,
+      var(--coin-pal-base, #c9ccd1) 48%,
+      var(--coin-pal-dark, #9aa0ab) 88%,
+      var(--coin-pal-deep, #6b7280) 100%
+    );
+}
+
+/* 倒角轮廓环（PL003）：面外圈环形渐变（左上最亮→右下深暗，顶光倒角斜面），
+   mask 只留外圈 95%~100%，与侧面 seg 顶部亮边衔接成"圆碟"轮廓 */
+.face::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    var(--coin-pal-light, #ffe9a0) 0deg 90deg,
+    var(--coin-pal-dark, #c9982f) 90deg 180deg,
+    var(--coin-pal-deep, #8a6d1f) 180deg 270deg,
+    var(--coin-pal-hi, #fff6d8) 270deg 360deg
+  );
+  -webkit-mask: radial-gradient(circle, transparent 0 95%, #000 95%);
+  mask: radial-gradient(circle, transparent 0 95%, #000 95%);
+}
+
+/* 面 emoji 浮雕（PL003）：drop-shadow 双层反向 1px（亮影下暗影上），经典 emboss 冲压感 */
+.face-mark {
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.4))
+    drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.35));
+}
+
+/* 正面外圈齿环（PL002）：齿数 360/--coin-rim-step = 144，与侧面滚花一一对应（同角度基准 0°） */
+.face::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    from 0deg,
+    var(--coin-rim-hi, #f0c75e) 0deg calc(var(--coin-rim-step, 2.5deg) / 2),
+    var(--coin-rim-lo, #8a6d1f) calc(var(--coin-rim-step, 2.5deg) / 2)
+      var(--coin-rim-step, 2.5deg)
+  );
+  -webkit-mask: radial-gradient(
+    circle,
+    transparent 0 68%,
+    #000 68% 95%,
+    transparent 95%
+  );
+  mask: radial-gradient(
+    circle,
+    transparent 0 68%,
+    #000 68% 95%,
+    transparent 95%
+  );
+}
+
+/* 硬币侧面圆柱壁（PL002）：容器 rotateX(90deg) 把圆柱轴从 Y 转到 Z（视线方向），
+   使 seg 厚度沿 Z 前后、圆周在 XY 平面，避免 seg 出现在正面中心 */
+.coin-edge {
+  position: absolute;
+  inset: 0;
+  transform: rotateX(90deg);
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+
+.edge-seg {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin: 0;
+  /* 滚花条纹周期 = 每段弧长/6 → 每段 6 齿、段间连续，总 144 齿，与正面齿环一一对应；
+     --seg-arc 由 buildCoinEdge 按实际半径写入，断点变半径齿数恒定；
+     75deg 斜齿（PL003）：reeded edge 斜度，比竖条纹更接近真实滚边 */
+  background:
+    repeating-linear-gradient(
+      75deg,
+      rgba(0, 0, 0, 0.22) 0 calc(var(--seg-arc) / 12),
+      transparent calc(var(--seg-arc) / 12) calc(var(--seg-arc) / 6)
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.18),
+      transparent 45%,
+      rgba(0, 0, 0, 0.25)
+    ),
+    var(--coin-edge, #b8903a);
 }
 
 /* ---------- 结果展示区 ---------- */
