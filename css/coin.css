@@ -1,0 +1,423 @@
+/* ============================================================
+   幸运硬币选择 - 界面样式（单屏自适应，零依赖，动效只动 transform/opacity）
+   设计要点：硬币 3D 用 perspective+rotateY+preserve-3d；强制单屏布局；
+   可调参数（颜色/尺寸/动画时长）集中 :root 变量，禁散落硬编码。
+   ============================================================ */
+
+:root {
+  --bg: #1e2030;
+  --surface: #2a2d42;
+  --surface-2: #343850;
+  --text: #eef0f6;
+  --text-dim: #9aa0b5;
+  --accent: #ffd166;
+  --accent-2: #06d6a0;
+  --danger: #ef476f;
+  --radius: 14px;
+  --coin-size: min(58vw, 240px);
+  --touch-min: 44px;
+  --idle-hint-ms: 3200ms;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* ---------- 单屏布局：头部/硬币/结果/底部 纵向排布，硬币区吸收剩余 ---------- */
+#app {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px
+    calc(env(safe-area-inset-bottom, 0px) + 10px);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ---------- 顶部模式区 ---------- */
+#mode-area {
+  flex: 0 0 auto;
+}
+
+#mode-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.mode-btn {
+  flex: 1;
+  min-height: var(--touch-min);
+  border: 1px solid var(--surface-2);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 15px;
+  font-weight: 600;
+  transition:
+    transform 120ms ease,
+    background 120ms ease,
+    color 120ms ease;
+}
+
+.mode-btn.active {
+  background: var(--accent);
+  color: #201a10;
+  border-color: var(--accent);
+  transform: scale(1.04);
+}
+
+/* ---------- 自定义数字滑动选择器 ---------- */
+.picker {
+  margin-top: 10px;
+}
+
+.picker-slots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.slot {
+  position: relative;
+  flex: 1;
+  height: 52px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+}
+
+.slot-track {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  will-change: transform;
+  transition: transform 220ms cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.slot-item {
+  width: var(--touch-min);
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: var(--text-dim);
+  transition:
+    transform 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease;
+}
+
+.slot-item.selected {
+  color: var(--accent);
+  font-size: 30px;
+  font-weight: 800;
+  transform: scale(1.12);
+}
+
+.slot-item.disabled {
+  opacity: 0.25;
+}
+
+/* 选中高亮带（上中下三条细线） */
+.slot::after {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 50%;
+  height: 52px;
+  transform: translateY(-50%);
+  border-top: 2px solid rgba(255, 209, 102, 0.35);
+  border-bottom: 2px solid rgba(255, 209, 102, 0.35);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.picker-label {
+  font-size: 16px;
+  color: var(--text-dim);
+  flex: 0 0 auto;
+}
+
+/* ---------- 硬币区 ---------- */
+#coin-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 0;
+}
+
+#swipe-hint {
+  color: var(--text-dim);
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+
+#coin-scene {
+  perspective: 1100px;
+}
+
+#coin {
+  position: relative;
+  width: var(--coin-size);
+  height: var(--coin-size);
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.face {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--coin-size) * 0.44);
+  backface-visibility: hidden;
+  box-shadow: inset 0 -6px 18px rgba(0, 0, 0, 0.28);
+}
+
+.face-show {
+  transform: rotateY(0deg) translateZ(calc(var(--coin-size) / 2));
+  background:
+    radial-gradient(circle at 38% 32%, #fff9, transparent 60%),
+    var(--coin-face-show, #c9a227);
+}
+
+.face-yes {
+  transform: rotateY(120deg) translateZ(calc(var(--coin-size) / 2));
+  background:
+    radial-gradient(circle at 38% 32%, #fff9, transparent 60%),
+    var(--coin-face-yes, #0e9f6e);
+}
+
+.face-no {
+  transform: rotateY(240deg) translateZ(calc(var(--coin-size) / 2));
+  background:
+    radial-gradient(circle at 38% 32%, #fff9, transparent 60%),
+    var(--coin-face-no, #b0464f);
+}
+
+/* ---------- 结果展示区 ---------- */
+#result-area {
+  flex: 0 0 auto;
+  min-height: 92px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+}
+
+#round-result {
+  font-size: 20px;
+  font-weight: 700;
+  min-height: 28px;
+}
+
+#round-result.final {
+  color: var(--accent-2);
+}
+
+#progress {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+#reset-btn {
+  min-height: var(--touch-min);
+  padding: 0 28px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--accent-2);
+  color: #06281c;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* ---------- 底部功能区 ---------- */
+#bottom-bar {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+#bottom-bar button {
+  flex: 1;
+  min-height: var(--touch-min);
+  border: 1px solid var(--surface-2);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 15px;
+}
+
+/* ---------- 浮层（成绩/设置，不遮页面主体） ---------- */
+#overlay {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  padding: 0 20px;
+  pointer-events: none;
+}
+
+.overlay-card {
+  width: 100%;
+  max-width: 360px;
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+  animation: overlay-in 200ms ease;
+}
+
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.overlay-card h3 {
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.score-list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.score-list li {
+  min-width: 44px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  text-align: center;
+}
+
+.score-list li .no {
+  display: block;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.score-list li .face {
+  display: block;
+  font-size: 16px;
+}
+
+.theme-options {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.theme-option {
+  flex: 1;
+  min-height: var(--touch-min);
+  border: 1px solid var(--surface-2);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.theme-option.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.overlay-close {
+  width: 100%;
+  min-height: var(--touch-min);
+  border: none;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+/* ---------- 轻提示 toast ---------- */
+#toast {
+  position: fixed;
+  left: 50%;
+  top: 18%;
+  transform: translateX(-50%);
+  z-index: 60;
+  padding: 12px 22px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--accent);
+  color: var(--text);
+  font-size: 15px;
+  animation: toast-in 180ms ease;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ---------- 断点（320/375/430 档位微调） ---------- */
+@media (max-width: 380px) {
+  :root {
+    --coin-size: min(60vw, 200px);
+  }
+  .slot-item {
+    width: 40px;
+  }
+  .mode-btn {
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 430px) {
+  :root {
+    --coin-size: min(52vw, 260px);
+  }
+}

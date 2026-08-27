@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>幸运硬币选择</title>
+    <link rel="stylesheet" href="css/coin.css" />
+  </head>
+  <body>
+    <main id="app">
+      <!-- 顶部模式区：互斥按钮 + 自定义数字滑动选择器 -->
+      <header id="mode-area" aria-label="对局模式">
+        <div id="mode-buttons">
+          <button type="button" class="mode-btn" data-mode="three-two">
+            三局两定
+          </button>
+          <button type="button" class="mode-btn" data-mode="five-three">
+            五局三定
+          </button>
+          <button type="button" class="mode-btn" data-mode="custom">
+            自定义
+          </button>
+        </div>
+        <div id="custom-picker" class="picker hidden" aria-hidden="true">
+          <div class="picker-slots">
+            <div
+              class="slot"
+              id="slot-x"
+              role="slider"
+              aria-label="局数"
+              aria-valuemin="2"
+              aria-valuemax="9"
+            ></div>
+            <span class="picker-label">局</span>
+            <div class="slot" id="slot-y" role="slider" aria-label="定数"></div>
+            <span class="picker-label">定</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- 硬币区（核心交互，占剩余空间） -->
+      <section id="coin-stage" aria-label="硬币区">
+        <p id="swipe-hint">左右滑动 · 抛硬币</p>
+        <div id="coin-scene">
+          <div id="coin">
+            <div class="face face-show"></div>
+            <div class="face face-yes"></div>
+            <div class="face face-no"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 结果展示区 -->
+      <section id="result-area" aria-label="结果区">
+        <div id="round-result"></div>
+        <div id="progress"></div>
+        <button type="button" id="reset-btn" class="hidden">再来一局</button>
+      </section>
+
+      <!-- 底部功能区 -->
+      <footer id="bottom-bar">
+        <button type="button" id="score-btn">成绩</button>
+        <button type="button" id="settings-btn">换硬币</button>
+      </footer>
+    </main>
+
+    <!-- 浮层容器（成绩/设置）与轻提示 -->
+    <div id="overlay" hidden aria-hidden="true"></div>
+    <div id="toast" hidden role="status"></div>
+
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>

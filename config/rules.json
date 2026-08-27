@@ -1,0 +1,9 @@
+{
+  "defaultMode": "one-shot",
+  "idleTimeoutMs": 3000,
+  "accelFactor": 1.6,
+  "decelDurationMs": 2600,
+  "turns": 5,
+  "flipMs": 600,
+  "configVersion": "rules-v1"
+}
