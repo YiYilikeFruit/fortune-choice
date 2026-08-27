@@ -213,19 +213,51 @@ export function buildCoinEdge(coinEl, n, radius, thick, doc = document) {
   }
   return segs;
 }
-
-// 设置硬币面 emoji 标记（包 .face-mark span，供浮雕 filter 使用）
-// 输入：faceEl 面元素、text emoji；输出：无（无 span 时创建）
-function _setFaceMark(faceEl, text) {
-  let mark = faceEl.querySelector(".face-mark");
+// 构建币面固定层（PL004）：face 内按序创建内容标记容器 .coin-face-mark、
+// 金属光泽 .coin-shine、内 rim .coin-rim（仅一次，之后只更新标记内容，保证层序稳定）
+// 输入：faceEl 面元素；输出：mark 容器（图片/emoji 放其中）
+function _ensureFaceLayers(faceEl) {
+  let mark = faceEl.querySelector(".coin-face-mark");
   if (!mark) {
-    mark = document.createElement("span");
-    mark.className = "face-mark";
+    mark = document.createElement("div");
+    mark.className = "coin-face-mark";
     faceEl.appendChild(mark);
+    const shine = document.createElement("div");
+    shine.className = "coin-shine";
+    faceEl.appendChild(shine);
+    const rimShadow = document.createElement("div");
+    rimShadow.className = "coin-rim-shadow";
+    faceEl.appendChild(rimShadow);
+    const rim = document.createElement("div");
+    rim.className = "coin-rim";
+    faceEl.appendChild(rim);
+    const junction = document.createElement("div");
+    junction.className = "coin-junction";
+    faceEl.appendChild(junction);
   }
-  mark.textContent = text;
+  return mark;
 }
 
+// 设置硬币面标记（PL004）：清空标记容器后按 faces 值类型分派——
+// 图片路径（.png/.jpg/.jpeg/.webp）→ img.coin-face-img；emoji → span.face-mark
+// 输入：faceEl 面元素、text emoji 或图片路径；输出：无（层序由 _ensureFaceLayers 保证）
+function _setFaceMark(faceEl, text) {
+  const mark = _ensureFaceLayers(faceEl);
+  mark.textContent = "";
+  const isImg = typeof text === "string" && /\.(png|jpe?g|webp)$/i.test(text);
+  if (isImg) {
+    const img = document.createElement("img");
+    img.className = "coin-face-img";
+    img.src = text;
+    img.alt = "";
+    mark.appendChild(img);
+  } else {
+    const span = document.createElement("span");
+    span.className = "face-mark";
+    span.textContent = text;
+    mark.appendChild(span);
+  }
+}
 // 渲染硬币主题：双面 emoji + 展示面 + 材质 palette（面片/倒角/齿环取色）+ 侧面壁色
 // 输入：refs（含 faces.yes/no、coin）、theme 主题对象；输出：无
 // 说明（PL003）：palette 五色写入 #coin 容器（子面片继承），金暖银冷光谱
@@ -363,7 +395,10 @@ export function buildSettingsContent(currentTheme, onChange) {
 // - yRangeFor(x)：定数可用范围联动（纯函数）
 // - collectRefs(doc)：骨架元素引用收集，缺失 fail-fast
 // - buildSlot(slotEl)：构建滑动选择器，返回轨道/吸附/取值句柄
-// - renderCoinTheme / setCoinShowFace / setCoinAngle：硬币渲染
+// - buildCoinEdge(coinEl,n,radius,thick)：构建圆柱侧面壁（PL002，写 --seg-arc）
+// - shadeHex(hex,factor)：派生加深色（齿环暗色等，PL002）
+// - _setFaceMark(faceEl,text)：面标记分派（emoji→span / 图片路径→img，PL004）
+// - renderCoinTheme / setCoinShowFace / setCoinAngle：硬币渲染（palette 写变量，PL003）
 // - renderRoundResult / renderProgress / showReset：结果区
 // - showOverlayCard / hideOverlay / showToast：浮层与提示
 // - buildScoreContent / buildSettingsContent：成绩/设置浮层内容构建

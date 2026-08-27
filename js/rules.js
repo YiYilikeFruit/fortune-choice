@@ -65,6 +65,24 @@ export const THEMES = Object.freeze({
       deep: "#6b7280",
     }),
   }),
+  // 图片币面主题（PL004）：faces 为离线包内图片路径（assets/coins/anya/），
+  // palette 为中性金棕系（rim/金属层取色，图片自带色彩，实施后目检微调）
+  anya: Object.freeze({
+    name: "Anya",
+    faces: Object.freeze({
+      show: "assets/coins/anya/show.jpeg",
+      yes: "assets/coins/anya/yes.jpg",
+      no: "assets/coins/anya/no.jpeg",
+    }),
+    color: "#d9b97e",
+    palette: Object.freeze({
+      hi: "#fff7e0",
+      light: "#f4e4c3",
+      base: "#d9b97e",
+      dark: "#9c7a45",
+      deep: "#6b5430",
+    }),
+  }),
 });
 
 // 默认主题

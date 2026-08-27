@@ -1,7 +1,7 @@
 # 开发进度追踪（x.progress.md）
 
 > 依据：`z.plan.md`（幸运硬币选择方案报告，PL001）
-> 当前版本：V0.1.0.3（单一来源：`config/version.json`；AGENTS.md「版本号唯一来源」约定）
+> 当前版本：V0.1.0.4（单一来源：`config/version.json`；AGENTS.md「版本号唯一来源」约定）
 > 记录格式：状态 [⏳ 待开发, ✅ 已完成] / 优先级 [高, 中, 低]
 > 执行原则：每阶段完成后运行验证命令确认无回归，再进入下一阶段
 > 错误策略：不崩溃、不阻塞、有提示、能自愈——统一中文错误类型 / fail-fast 与明确回落并用 / 宽容解析（详见 AGENTS.md 错误策略主线）
@@ -92,8 +92,8 @@ node .temp/probe_pl001_ui.js      # PL001.6 UI 层（DOM stub）：模式区/数
 
 #### PL001.7 无头回归编排（.temp/run_all.py）
 
-- [x] PL001.7.a run_all.py：枚举执行全部 verify_*（node 子进程）统一出口计数汇总，任一失败非零退出——做法：参考参考项目 run_all.py 写法；验证：注入临时失败脚本断言非零退出
-- [x] PL001.7.b 全量回归 = 全部 verify_* 0 失败；校验**不变量**为主，禁止写死易变值（A018 验证纪律：版本/日期/路径/计数不写死，用正则/动态读取）——验证：run_all.py 0 失败（4 脚本全绿）
+- [x] PL001.7.a run*all.py：枚举执行全部 verify*\*（node 子进程）统一出口计数汇总，任一失败非零退出——做法：参考参考项目 run_all.py 写法；验证：注入临时失败脚本断言非零退出
+- [x] PL001.7.b 全量回归 = 全部 verify\_\* 0 失败；校验**不变量**为主，禁止写死易变值（A018 验证纪律：版本/日期/路径/计数不写死，用正则/动态读取）——验证：run_all.py 0 失败（4 脚本全绿）
 
 #### PL001.8 文档同步与版本定版
 
@@ -108,7 +108,7 @@ node .temp/probe_pl001_ui.js      # PL001.6 UI 层（DOM stub）：模式区/数
 - [x] PL001 系列完成后草拟（2026-08-27 完成）：
   - 标题：`feat: V0.1.0.0，幸运硬币选择丢硬币多局玩法与 3D 硬币交互`
   - 正文：`- 模式互斥单选（三局两定/五局三定/自定义/一局定输赢），自定义数字滑动选择器 Y≤X 联动` / `- X局Y定收敛与加赛一局定生死` / `- 硬币三面 2 套主题，CSS3 3D 旋转，滑动加速超时自动落定` / `- 成绩与设置浮窗，终局重置`
-  - git add 清单（用户审阅后自行执行）：index.html package.json css/coin.css js/ config/ .temp/（verify__.js probe__.js run_all.py assert_lite.mjs）AGENTS.md README.md z.plan.md x.progress.md .gitignore .opencode/skills/
+  - git add 清单（用户审阅后自行执行）：index.html package.json css/coin.css js/ config/ .temp/（verify**.js probe**.js run_all.py assert_lite.mjs）AGENTS.md README.md z.plan.md x.progress.md .gitignore .opencode/skills/
   - 验证：用户审阅后自行 git add/commit/push（AI 不执行 git 写操作）
 
 ---
@@ -133,7 +133,7 @@ node .temp/probe_pl001_ui.js      # PL001.6 UI 层（DOM stub）：模式区/数
 - [x] A3.7 窄屏 slot 吸附 —— ui.js buildSlot itemW 改 items[0].offsetWidth 实测（fallback 44）；验证：verify_a_fixes 断言（2026-08-28）
 - [x] A3.8 拖动 transition 滞后 —— ui.js setOffset 禁 transition（跟手）、setIndex 恢复；验证：verify_a_fixes 断言（2026-08-28）
 - [x] A3.9 seed 可复现可见性 —— main.js settle 终局 renderProgress 展示 `seed: ${ctx.game.seed}`；验证：verify_a_fixes 断言（2026-08-28）
-- [x] A3.10 settle 400ms 简化 —— main.js settle 删 Math.max(400,diff*3) 过渡与 400ms 外层延迟（引导已精确落定）；验证：verify_a_fixes + verify_a_accept 收敛无回归（2026-08-28）
+- [x] A3.10 settle 400ms 简化 —— main.js settle 删 Math.max(400,diff\*3) 过渡与 400ms 外层延迟（引导已精确落定）；验证：verify_a_fixes + verify_a_accept 收敛无回归（2026-08-28）
 - [x] A3.11 score.push 冗余三元 —— main.js 终局分支简化为 ctx.game.decision；验证：verify_a_fixes 断言（2026-08-28）
 - [x] A3.12 init 错误条防注入 —— main.js catch 改 createElement+textContent；验证：verify_a_fixes 断言（2026-08-28）
 - [x] A3.13 slot-y aria 补齐 —— index.html #slot-y 加 aria-valuemin="2" aria-valuemax="9"；验证：verify_a_fixes 断言（2026-08-28）
@@ -237,3 +237,43 @@ node .temp/probe_pl001_ui.js      # PL001.6 UI 层（DOM stub）：模式区/数
   - `- 面片写实金属质感：金/银五色材质光谱 + 倒角轮廓环 + 表面肌理 + emoji 浮雕`
   - `- 接触阴影独立固定层（不随旋转）+ 落定 bounce + 翻转 overshoot + reduced-motion 快进`
   - `- 版本推进 V0.1.0.3`
+
+---
+
+## PL004. 硬币图片币面与 rim 结构任务清单（依据 z.plan.md PL004，2026-08-28）
+
+> 状态：✅ 已实施（2026-08-28：PL004.1-3 全部落地，verify_pl004 21/21 + 回归 9/9 + 冒烟 OK；浏览器目检待用户确认）；分组：PL004.1 主题/图片接入 → PL004.2 rim/压线 → PL004.3 金属层重排 → PL004.4 验证收尾
+> 方案：z.plan.md PL004（anya 图片币面 + rim 凸起 + 内缘压线，JPEG 现状接入）
+
+#### PL004.1 主题与图片接入（rules.js/ui.js）
+
+- [x] PL004.1.a THEMES 新增 anya —— js/rules.js 增第三套主题（faces: yes/no/show → assets/coins/anya/ 图片路径）+ palette（中性金棕系，目检可微调）；verify_rules 主题数量断言 2→动态；验证：verify_rules 60/60 + verify_pl004（2026-08-28）
+- [x] PL004.1.b \_setFaceMark 图片分派 —— js/ui.js 按 faces 值类型分派（emoji→span.face-mark / 路径→img.coin-face-img），renderCoinTheme 换图；验证：verify_pl004 断言 img src + emoji 兼容（2026-08-28）
+
+#### PL004.2 rim 凸起 + 内缘压线（css）
+
+- [x] PL004.2.a .coin-rim 凸起环带 —— css/coin.css 新增环带（mask 60%~68%，conic 上亮下暗模拟凸起保护环）；验证：verify_pl004 mask 断言 + 目检（2026-08-28）
+- [x] PL004.2.b 内缘压线 —— rim 内侧 60% 处 1px 暗环（压铸痕迹过渡图案区）；验证：verify_pl004 59.5%~60.5% 断言 + 目检（2026-08-28）
+
+#### PL004.3 金属层重排（css）
+
+- [x] PL004.3.a .coin-shine 独立层 —— 面片金属渐变（高光/曲率/肌理）移入 .coin-shine（inset 4% 半透明）叠图片上方，face 背景仅留曲率渐变；验证：verify_pl003 渐变断言同步 40/40 + 目检（2026-08-28）
+
+#### PL004.4 验证与收尾
+
+- [x] PL004.4.a 无头探针 —— .temp/verify_pl004.js 断言 anya 主题结构/图片资源在位/img 分派/rim mask；验证：node 21/21 PASS（2026-08-28）
+- [x] PL004.4.b 全量回归 + 目检 —— run_all 9/9 + probe/verify_a_fixes 全绿 + 冒烟 OK（2026-08-28 已跑）；**浏览器目检通过（用户确认：anya 图叠加金属质感、rim 凸起与压线、交界线方位明暗与羽化）**；版本推进 V0.1.0.4 四处同步，commit 草稿见下方
+
+### commit 草稿（V2 规范，2026-08-28 PL004，版本 V0.1.0.4）
+
+- git add 清单（8 项）：
+  - `css/coin.css` `js/rules.js` `js/ui.js` —— anya 主题 + rim/junction 光影实现
+  - `assets/` —— anya 币面图片（yes/no/show，离线包内嵌）
+  - `config/version.json` `README.md` —— 版本推进 V0.1.0.4
+  - `x.progress.md` `z.plan.md` —— 任务清单/方案
+- 标题：`feat: V0.1.0.4，硬币图片币面与 rim 结构光影（anya 主题/凸起内环/交界线）`
+- 正文：
+  - `- 新增 anya 图片币面主题（assets/coins/anya 三图，按 faces 值类型图片分派接入）`
+  - `- rim 凸起内环 + 内缘压铸线 + 方位投影（左上光源/背光侧阴影，内圈投影带羽化）`
+  - `- 齿-rim 交界线：随方位明暗的黑线（高光减淡/背光加深）+ 羽化抗锯齿`
+  - `- 版本推进 V0.1.0.4`

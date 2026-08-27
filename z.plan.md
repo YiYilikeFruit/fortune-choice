@@ -103,8 +103,8 @@ fortune-choice/
 ## PL001. 幸运硬币选择完整 MVP 实施方案（2026-08-27）
 
 > 来源：小红书小工具技术规范 + 与用户多轮对齐拍板（2026-08-27：模式互斥 / X局Y定 / 加赛定生死 / 硬币三面 2 套主题（注：现实现已改双面） / 滑动加速 3s 超时 / 结果区与终局重置 / 成绩会话内）
-> 状态：✅ 已实施（V0.1.0.3，2026-08-28：双面硬币 + 落点引导精确落定 + 结果面停留翻转 + 交互打磨，首轮审计 A001 修复（定时器竞态/配置清理/交互优化/文档同步）全部落地；无头回归 6 脚本 + 2 探针全绿；浏览器端到端视觉已目检）
-> 目标版本：V0.1.0.3
+> 状态：✅ 已实施（V0.1.0.4，2026-08-28：双面硬币 + 落点引导精确落定 + 结果面停留翻转 + 交互打磨，首轮审计 A001 修复（定时器竞态/配置清理/交互优化/文档同步）全部落地；无头回归 6 脚本 + 2 探针全绿；浏览器端到端视觉已目检）
+> 目标版本：V0.1.0.4
 
 ### 目标形态
 
@@ -236,6 +236,43 @@ fortune-choice/
 
 - 版本：V0.1.0.3（2026-08-28 随 PL002/PL003 提交推进）
 - 验证：无头探针断言 palette 结构/渐变层/动效曲线/斜纹角度（.temp/verify_pl003_*）+ 浏览器目检（金/银质感、旋转光影、落定 bounce、翻转手感、reduced-motion）
+
+---
+
+## PL004. 硬币图片币面与 rim 结构（2026-08-28 定案）
+
+> 来源：与用户讨论（2026-08-28：emoji 正式替换为币面图片；真实硬币齿边内侧有凸起内 rim 与压铸痕迹）
+> 状态：📌 待实施（PL004 任务清单见 x.progress.md）
+
+### 背景
+
+- 当前币面主体为 emoji（.face-mark），拟物化后仍显卡通；用户提供 anya 主题三张币面图（assets/coins/anya/：yes.jpg 447² / no.jpeg 1000² / show.jpeg 512²，均为 JPEG）
+- 真实硬币齿边内侧：一圈凸起的内 rim（保护环，顶光下上沿亮下沿暗）+ 内缘压铸痕迹（rim 与图案区之间的暗沟/压线）
+- 用户确认：rim 凸起 + 内缘压线都做；图片先按现状 JPEG 接入（方形角由圆形面片裁剪），后续可换透明 PNG
+
+### 决策结论（2026-08-28 与用户确认）
+
+1. **新增第三套主题 anya**：THEMES 增 anya（faces 用图片路径），gold/silver emoji 主题保留；DEFAULT_THEME 不变
+2. **图片作为币面主体层**：.face 内 .coin-face-img（全铺 + border-radius 50% 圆形裁剪，JPEG 方形角裁掉）；图片覆盖 rim 以内的图案区
+3. **rim 凸起 + 内缘压线都做**：新增 .coin-rim 环带（mask 只留 68%~76% 环），环形渐变模拟凸起（上沿亮下沿暗）；内缘压线 = rim 内侧 76% 处一圈暗线（压铸痕迹过渡到图案区）
+4. **金属层重排叠图上方**：现有面片金属渐变（高光/曲率/肌理）移入 .coin-shine 独立层（pointer-events none），叠在图片之上（光打在币面上）；face 背景简化
+5. **层叠顺序**：.coin-shine（上）→ .coin-rim（含压线）→ .coin-face-img → ::after 齿环 → ::before 倒角（按遮挡关系实施时定）
+6. **anya palette**：实施时从图片主色估定（金属层/rim 取色），写死于 THEMES；换图只换 assets 图片不改样式
+7. **契约同步**：verify_rules 断言 THEMES keys.length===2 → 动态/3；_setFaceMark 判断值类型（emoji 走 span，路径走 img）
+
+### 设计要点
+
+- 结构：.face 内新增 .coin-face-img（JS 由 theme.faces 路径创建 img）、.coin-shine、.coin-rim 三层；伪元素 ::before/::after 仍归倒角/齿环
+- rim：.coin-rim 背景渐变（上亮下暗模拟凸起）+ mask radial 只留 68%~76% 环带；压线在 rim 内缘 1px 暗环
+- 图片接入：_setFaceMark 改造为按主题 faces 值分派（emoji→span / 路径→img src），renderCoinTheme 换图
+- 约束核查：图片为离线包内资源（相对路径，随离线包打包）；纯 CSS 层叠，无实时滤镜
+- 涉及文件：js/rules.js（THEMES anya + palette）、js/ui.js（_setFaceMark/renderCoinTheme）、css/coin.css（.coin-face-img/.coin-shine/.coin-rim）、.temp/verify_rules.js（主题数量断言）
+- 不涉及：game.js/random.js/coin.js、index.html（无需改）
+
+### 关联
+
+- 版本：V0.1.0.4（2026-08-28 随 PL004 提交推进）
+- 验证：无头探针断言 anya 主题结构/图层/rim mask（.temp/verify_pl004_*）+ 浏览器目检（图叠加金属质感、rim 凸起与压线、三图切换、旋转流畅）
 
 ---
 

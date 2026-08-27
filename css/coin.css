@@ -270,62 +270,188 @@ body {
 
 .face-yes {
   transform: rotateY(0deg) translateZ(calc(var(--coin-thick) / 2));
-  background:
-    /* 肌理：SVG feTurbulence 金属颗粒（data-URI 静态贴图，旋转 GPU transform 不重采样） */
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23g)' opacity='0.3'/%3E%3C/svg%3E")
-      0 0 / 128px 128px,
-    /* 左上椭圆高光带（顶光 38%32% 光源体系；PL003 高光方案 A：绑定面片本地坐标） */
-    radial-gradient(
-        110% 70% at 34% 22%,
-        var(--coin-pal-hi, #fff6d8),
-        transparent 58%
-      ),
-    /* 边缘暗晕（圆润过渡，压暗外圈） */
-    radial-gradient(circle at 50% 50%, transparent 60%, rgba(0, 0, 0, 0.2) 100%),
-    /* 右下环境反光 */
-    radial-gradient(
-        90% 60% at 72% 88%,
-        rgba(255, 255, 255, 0.16),
-        transparent 55%
-      ),
-    /* 金属曲率明暗（light→base→dark→deep，金暖色相） */
-    radial-gradient(
-        circle at 50% 48%,
-        var(--coin-pal-light, #ffe9a0) 0%,
-        var(--coin-pal-base, #f0c75e) 48%,
-        var(--coin-pal-dark, #c9982f) 88%,
-        var(--coin-pal-deep, #8a6d1f) 100%
-      );
+  /* 曲率明暗（PL004：高光带/暗晕/环境反光/肌理抽到 .coin-shine 叠内容上方） */
+  background: radial-gradient(
+    circle at 50% 48%,
+    var(--coin-pal-light, #ffe9a0) 0%,
+    var(--coin-pal-base, #f0c75e) 48%,
+    var(--coin-pal-dark, #c9982f) 88%,
+    var(--coin-pal-deep, #8a6d1f) 100%
+  );
 }
 
 .face-no {
   transform: rotateY(180deg) translateZ(calc(var(--coin-thick) / 2));
+  background: radial-gradient(
+    circle at 50% 48%,
+    var(--coin-pal-light, #e8eaee) 0%,
+    var(--coin-pal-base, #c9ccd1) 48%,
+    var(--coin-pal-dark, #9aa0ab) 88%,
+    var(--coin-pal-deep, #6b7280) 100%
+  );
+}
+
+/* 币面标记容器（PL004）：图片/emoji 内容层，shine/rim 叠其上（层序稳定）；
+   flex 居中使 emoji span 居中于币面（img 为 absolute 不受影响） */
+.coin-face-mark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 币面图片层（PL004）：img 圆形裁剪铺面（inset 4% 让出外圈倒角），
+   rim/齿环环带遮其外圈，图案区 <60% 显示图片 */
+.coin-face-img {
+  position: absolute;
+  inset: 4%;
+  width: 92%;
+  height: 92%;
+  border-radius: 50%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+/* 金属光泽层（PL004）：高光带/环境反光/暗晕/肌理叠图片或曲率上方（半透明，不遮内容） */
+.coin-shine {
+  position: absolute;
+  inset: 4%;
+  border-radius: 50%;
+  pointer-events: none;
   background:
-    /* 肌理 + 高光带 + 暗晕 + 环境反光 + 曲率（与 face-yes 同光源体系） */
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23g)' opacity='0.3'/%3E%3C/svg%3E")
-      0 0 / 128px 128px,
+    /* 左上椭圆高光带（顶光 38%32% 光源体系；PL003 方案 A：绑定面片本地坐标） */
     radial-gradient(
       110% 70% at 34% 22%,
-      var(--coin-pal-hi, #fff6d8),
+      rgba(255, 255, 255, 0.35),
       transparent 58%
+    ),
+    /* 右下环境反光 */
+    radial-gradient(
+        90% 60% at 72% 88%,
+        rgba(255, 255, 255, 0.12),
+        transparent 55%
+      ),
+    /* 边缘暗晕（圆润过渡，压暗外圈） */
+    radial-gradient(
+        circle at 50% 50%,
+        transparent 60%,
+        rgba(0, 0, 0, 0.18) 100%
+      ),
+    /* 肌理：SVG feTurbulence 金属颗粒（data-URI 静态贴图，旋转 GPU transform 不重采样） */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23g)' opacity='0.3'/%3E%3C/svg%3E")
+      0 0 / 128px 128px;
+}
+
+/* rim 投影层（PL004）：光左上→影右下（非均匀）——阴影最深在 -45°（315°，左上），
+   弧段 270°~360° 对称衰减，90°~180° 无投影；含内缘压铸线；
+   mask 双环带：图案边缘投影带宽度减半 59%~61% + 齿侧 68%~70% */
+.coin-rim-shadow {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background:
+    conic-gradient(
+      from 0deg,
+      rgba(0, 0, 0, 0.3) 0deg,
+      transparent 90deg,
+      transparent 180deg,
+      rgba(0, 0, 0, 0.3) 270deg,
+      rgba(0, 0, 0, 0.42) 315deg,
+      rgba(0, 0, 0, 0.3) 360deg
     ),
     radial-gradient(
       circle at 50% 50%,
-      transparent 60%,
-      rgba(0, 0, 0, 0.2) 100%
-    ),
-    radial-gradient(
-      90% 60% at 72% 88%,
-      rgba(255, 255, 255, 0.16),
-      transparent 55%
-    ),
-    radial-gradient(
-      circle at 50% 48%,
-      var(--coin-pal-light, #e8eaee) 0%,
-      var(--coin-pal-base, #c9ccd1) 48%,
-      var(--coin-pal-dark, #9aa0ab) 88%,
-      var(--coin-pal-deep, #6b7280) 100%
+      transparent 0 59.5%,
+      rgba(0, 0, 0, 0.35) 59.5% 60.5%,
+      transparent 60.5%
     );
+  -webkit-mask:
+    radial-gradient(
+      circle,
+      transparent 0 58.75%,
+      #000 58.75% 60%,
+      transparent 61.25%
+    ),
+    radial-gradient(circle, transparent 0 68%, #000 68% 70%, transparent 70%);
+  mask:
+    radial-gradient(
+      circle,
+      transparent 0 58.75%,
+      #000 58.75% 60%,
+      transparent 61.25%
+    ),
+    radial-gradient(circle, transparent 0 68%, #000 68% 70%, transparent 70%);
+}
+
+/* 齿-rim 交界线（PL004）：68% 半径处约 2px 环线，随方位变化——
+   -45°（315°）最亮：白色 conic 高光把黑线减淡；向两侧 270°/0° 平滑渐弱，
+   90°~180° 无高光（黑线最深），整圈连续过渡；
+   黑线整体透明度 75%；mask 只留黑线带 67.2%~68.8% */
+.coin-junction {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background:
+    conic-gradient(
+      from 0deg,
+      rgba(255, 255, 255, 0.5) 0deg,
+      transparent 90deg,
+      transparent 180deg,
+      rgba(255, 255, 255, 0.5) 270deg,
+      rgba(255, 255, 255, 0.85) 315deg,
+      rgba(255, 255, 255, 0.5) 360deg
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      transparent 0 calc(68% - 1.25%),
+      rgba(0, 0, 0, 0.75) calc(68% - 0.85%) calc(68% + 0.85%),
+      transparent calc(68% + 1.25%)
+    );
+  -webkit-mask: radial-gradient(
+    circle,
+    transparent 0 66.75%,
+    #000 66.75% 69.25%,
+    transparent 69.25%
+  );
+  mask: radial-gradient(
+    circle,
+    transparent 0 66.75%,
+    #000 66.75% 69.25%,
+    transparent 69.25%
+  );
+}
+
+/* 内 rim 本体凸起圈（PL004）：60.5%~68% 环带，conic 上亮下暗 +
+   左上高光峰值（光源 315°）；投影由 .coin-rim-shadow 提供（右下弧段） */
+.coin-rim {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background: conic-gradient(
+    from 0deg,
+    var(--coin-pal-light, #ffe9a0) 0deg,
+    var(--coin-pal-dark, #c9982f) 90deg,
+    var(--coin-pal-deep, #8a6d1f) 180deg,
+    var(--coin-pal-dark, #9c7a45) 270deg,
+    var(--coin-pal-hi, #fff7e0) 315deg,
+    var(--coin-pal-light, #ffe9a0) 360deg
+  );
+  -webkit-mask: radial-gradient(
+    circle,
+    transparent 0 60.5%,
+    #000 60.5% 68%,
+    transparent 68%
+  );
+  mask: radial-gradient(
+    circle,
+    transparent 0 60.5%,
+    #000 60.5% 68%,
+    transparent 68%
+  );
 }
 
 /* 倒角轮廓环（PL003）：面外圈环形渐变（左上最亮→右下深暗，顶光倒角斜面），
@@ -337,19 +463,22 @@ body {
   border-radius: 50%;
   background: conic-gradient(
     from 0deg,
-    var(--coin-pal-light, #ffe9a0) 0deg 90deg,
-    var(--coin-pal-dark, #c9982f) 90deg 180deg,
-    var(--coin-pal-deep, #8a6d1f) 180deg 270deg,
-    var(--coin-pal-hi, #fff6d8) 270deg 360deg
+    var(--coin-pal-light, #ffe9a0) 0deg,
+    var(--coin-pal-dark, #c9982f) 90deg,
+    var(--coin-pal-deep, #8a6d1f) 180deg,
+    var(--coin-pal-dark, #9c7a45) 270deg,
+    var(--coin-pal-hi, #fff7e0) 315deg,
+    var(--coin-pal-light, #ffe9a0) 360deg
   );
   -webkit-mask: radial-gradient(circle, transparent 0 95%, #000 95%);
   mask: radial-gradient(circle, transparent 0 95%, #000 95%);
 }
 
-/* 面 emoji 浮雕（PL003）：drop-shadow 双层反向 1px（亮影下暗影上），经典 emboss 冲压感 */
+/* 面 emoji 浮雕（PL003）：drop-shadow 双层反向影（亮影下暗影上）+ 柔和落影，冲压凸起感 */
 .face-mark {
-  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.4))
-    drop-shadow(0 -1px 0 rgba(0, 0, 0, 0.35));
+  filter: drop-shadow(0 1.5px 0 rgba(255, 255, 255, 0.5))
+    drop-shadow(0 -1.5px 0 rgba(0, 0, 0, 0.4))
+    drop-shadow(0 3px 6px rgba(0, 0, 0, 0.28));
 }
 
 /* 正面外圈齿环（PL002）：齿数 360/--coin-rim-step = 144，与侧面滚花一一对应（同角度基准 0°） */
