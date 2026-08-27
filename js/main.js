@@ -403,8 +403,7 @@ function bindUI(ctx, refs) {
       ctx.theme = name;
       // 切主题统一渲染 yes/no 双面（所有主题同一逻辑）
       ui.renderCoinTheme(refs, THEMES[name]);
-      const box = content.querySelector(".theme-options");
-      for (const btn of box.querySelectorAll(".theme-option")) {
+      for (const btn of content.querySelectorAll(".theme-option")) {
         btn.classList.toggle("active", btn.dataset.theme === name);
       }
     });

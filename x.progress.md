@@ -1,7 +1,7 @@
 # 开发进度追踪（x.progress.md）
 
 > 依据：`z.plan.md`（幸运硬币选择方案报告，PL001）
-> 当前版本：V0.1.0.4（单一来源：`config/version.json`；AGENTS.md「版本号唯一来源」约定）
+> 当前版本：V0.1.0.5（单一来源：`config/version.json`；AGENTS.md「版本号唯一来源」约定）
 > 记录格式：状态 [⏳ 待开发, ✅ 已完成] / 优先级 [高, 中, 低]
 > 执行原则：每阶段完成后运行验证命令确认无回归，再进入下一阶段
 > 错误策略：不崩溃、不阻塞、有提示、能自愈——统一中文错误类型 / fail-fast 与明确回落并用 / 宽容解析（详见 AGENTS.md 错误策略主线）
@@ -277,3 +277,24 @@ node .temp/probe_pl001_ui.js      # PL001.6 UI 层（DOM stub）：模式区/数
   - `- rim 凸起内环 + 内缘压铸线 + 方位投影（左上光源/背光侧阴影，内圈投影带羽化）`
   - `- 齿-rim 交界线：随方位明暗的黑线（高光减淡/背光加深）+ 羽化抗锯齿`
   - `- 版本推进 V0.1.0.4`
+
+### PL005 任务清单（2026-08-28 币面图片凹凸浮雕）
+
+- [x] PL005.1 新建 js/emboss.js —— embossPixels 纯函数（灰度→高度场→梯度法线→光源点积）+ embossImage 包装（canvas→dataURL）+ 同源缓存；验证：verify_emboss 7/7
+- [x] PL005.2 ui.js 图片分派接入 —— onload 预渲染替换 src，失败降级保留原图；验证：node --check + 浏览器冒烟
+- [x] PL005.3 verify_emboss.js 探针 —— 光源方位明暗/灰阶/色相保留/环境光/平坡一致；验证：run_all 10/10
+- [x] PL005.4 修复主题切换回调 box=null —— content 即 .theme-options，直接遍历子按钮；验证：浏览器点设置切换主题 OK（用户确认）
+- [x] PL005.5 目检定稿 —— 用户确认浮雕效果 OK；参数默认暂存 EMBOSS_DEFAULTS，外置 config 待定
+
+### commit 草稿（V2 规范，2026-08-28 PL005，版本 V0.1.0.5）
+
+- git add 清单（7 项）：
+  - `js/emboss.js` `js/ui.js` `js/main.js` —— 浮雕模块 + 接入 + 设置回调修复
+  - `config/version.json` `README.md` —— 版本推进 V0.1.0.5
+  - `x.progress.md` `z.plan.md` —— 任务清单/方案
+- 标题：`feat: V0.1.0.5，币面图片凹凸浮雕与主题切换修复（Canvas 预渲染浮雕/设置回调 null 修复）`
+- 正文：
+  - `- 新增 emboss.js 浮雕贴图模块：亮度高度场→梯度法线→光源点积，明暗叠回原色（slope/光源/环境光可调，同源缓存）`
+  - `- ui.js 图片币面接入浮雕（onload 预渲染 dataURL，失败降级原图）`
+  - `- 修复设置浮层主题切换回调 box=null 崩溃（content 即 .theme-options，直接遍历子按钮）`
+  - `- 版本推进 V0.1.0.5`

@@ -1,6 +1,6 @@
 # 幸运硬币选择
 
-> **V0.1.0.4** · 版本号唯一来源：[`config/version.json`](config/version.json)
+> **V0.1.0.5** · 版本号唯一来源：[`config/version.json`](config/version.json)
 
 用丢硬币的趣味游戏，帮你做出简单决策。
 
@@ -97,7 +97,7 @@ fortune-choice/
 │   └── main.js             # 启动装配与对局编排（加载配置 / 滑动→旋转→落定）
 ├── config/
 │   ├── rules.json          # 默认模式 / 滑动允许时间 / 加减速 / 落点引导 / 结果停留 / 翻转时长
-│   └── version.json        # 版本号单一来源（V0.1.0.4）
+│   └── version.json        # 版本号单一来源（V0.1.0.5）
 ├── .temp/                  # 无头验证资产（gitignore）
 ├── .opencode/              # opencode 项目配置（skills）
 ├── AGENTS.md               # 项目说明（AI 工作约定）

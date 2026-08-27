@@ -6,6 +6,7 @@
 // ============================================================
 
 import { THEMES, DEFAULT_THEME } from "./rules.js";
+import { embossImage } from "./emboss.js";
 
 // 中文数字：索引 0 = 一，对应数字 1
 export const CN_DIGITS = ["一", "二", "三", "四", "五", "六", "七", "八", "九"];
@@ -239,7 +240,8 @@ function _ensureFaceLayers(faceEl) {
 }
 
 // 设置硬币面标记（PL004）：清空标记容器后按 faces 值类型分派——
-// 图片路径（.png/.jpg/.jpeg/.webp）→ img.coin-face-img；emoji → span.face-mark
+// 图片路径（.png/.jpg/.jpeg/.webp）→ img.coin-face-img（PL005 浮雕化）；
+// emoji → span.face-mark
 // 输入：faceEl 面元素、text emoji 或图片路径；输出：无（层序由 _ensureFaceLayers 保证）
 function _setFaceMark(faceEl, text) {
   const mark = _ensureFaceLayers(faceEl);
@@ -248,9 +250,20 @@ function _setFaceMark(faceEl, text) {
   if (isImg) {
     const img = document.createElement("img");
     img.className = "coin-face-img";
-    img.src = text;
     img.alt = "";
     mark.appendChild(img);
+    // 浮雕化（PL005 方案 A）：图片加载后按明暗预渲染凹凸，失败降级保留原图
+    img.onload = () => {
+      if (img.dataset.embossed) return;
+      img.dataset.embossed = "1";
+      try {
+        const url = embossImage(img);
+        if (url && img.isConnected) img.src = url;
+      } catch (err) {
+        // 保留原图（不能因浮雕失败让币面空白）
+      }
+    };
+    img.src = text;
   } else {
     const span = document.createElement("span");
     span.className = "face-mark";
