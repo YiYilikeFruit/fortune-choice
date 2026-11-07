@@ -11,6 +11,7 @@ import { validateRules, MODES, THEMES, DEFAULT_THEME } from "./rules.js";
 import { createGame, toss, setStatus, STATUS } from "./game.js";
 import { tick, guidedStep } from "./coin.js";
 import * as ui from "./ui.js";
+import { idleHintFor, renderIdleHint, renderScoreProgress } from "./ui.js";
 
 // 解析配置 JSON 文本（装配层唯一解析入口）
 // 输入：text JSON 字符串、label 配置名（用于错误定位）；输出：解析对象
@@ -109,7 +110,9 @@ function resetGame(ctx, refs) {
   // 初始/重置无结果，双面均为展示面
   ui.setCoinShowFace(refs, THEMES[ctx.theme], "yes");
   ui.setCoinShowFace(refs, THEMES[ctx.theme], "no");
-  ui.renderRoundResult(refs.roundResult, "");
+  // 待机引导（PL007.1b）：结果区显示模式说明；比分复位（one-shot 自动隐藏，PL007.2）
+  renderIdleHint(refs.roundResult, idleHintFor(ctx.mode, ctx.custom));
+  renderScoreProgress(refs.scoreProgress, ctx.game);
   ui.renderProgress(refs.progress, "");
   ui.showReset(refs.resetBtn, false);
 }
@@ -202,6 +205,9 @@ function onSwipe(ctx, refs, deltaX) {
       finished: g.finished,
       decision: g.decision,
     };
+    // 新一轮抛掷复位引导锁：上一轮落定后 guiding 残留 true 会让本轮跳过
+    // 自由衰减直接进入落点引导，导致只能微幅旋转一个翻面就落定
+    ctx.guiding = false;
     ctx.game = setStatus(ctx.game, STATUS.ROTATING);
     // 硬币双面换成 yes/no，进入抛硬币
     ui.renderCoinTheme(refs, THEMES[ctx.theme]);
@@ -247,6 +253,8 @@ function settle(ctx, refs) {
   if (finished) {
     ctx.settling = false;
     ctx.score.push({ round, face: ctx.game.decision });
+    // 比分定格终局形态（PL007.2）：满色点 + 决胜文案保留
+    renderScoreProgress(refs.scoreProgress, ctx.game);
     ui.renderRoundResult(
       refs.roundResult,
       `最终答案：${ctx.game.decision.toUpperCase()}！`,
@@ -262,6 +270,8 @@ function settle(ctx, refs) {
     round,
     face: ctx.game.results[ctx.game.results.length - 1],
   });
+  // 比分更新（PL007.2）：落定后立即呈现当前 yes/no 计数与剩余局
+  renderScoreProgress(refs.scoreProgress, ctx.game);
   ui.renderRoundResult(refs.roundResult, `第${round}局：${faceText}`);
   // 结果面停留 resultHoldMs，让用户看清本局结果，再慢速转回展示面
   ctx.holdId = setTimeout(() => {

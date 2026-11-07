@@ -36,14 +36,15 @@ export const REQUIRED_KEYS = [
   "resetFlipMs",
 ];
 
-// 主题定义：2 套（MVP 用 emoji 占位，后续可替换为插画/配色）
-// faces.show 展示面（静止时朝上，无 yes/no 字样）/ faces.yes / faces.no
+// 主题定义：3 套（gold/silver 文字标记 + anya 图片币面，PL007.3 去 emoji 化）
+// faces.show 展示面品牌字「运」（静止时朝上）/ faces.yes「YES」/ faces.no「NO」；
+// 文字标记走 .face-mark 浮雕体系（深色冲压字），跨机型渲染一致（不依赖系统 emoji 字体）
 // palette 材质光谱（PL003）：hi/light/base/dark/deep 五色，金暖银冷色相拉开；
 //   base 与 color 同源（契约兼容），供面片多层渐变/倒角/齿环取色
 export const THEMES = Object.freeze({
   gold: Object.freeze({
     name: "金币",
-    faces: Object.freeze({ show: "🪙", yes: "✅", no: "❌" }),
+    faces: Object.freeze({ show: "运", yes: "YES", no: "NO" }),
     color: "#f0c75e",
     palette: Object.freeze({
       hi: "#fff6d8",
@@ -55,7 +56,7 @@ export const THEMES = Object.freeze({
   }),
   silver: Object.freeze({
     name: "银币",
-    faces: Object.freeze({ show: "🪙", yes: "👍", no: "👎" }),
+    faces: Object.freeze({ show: "运", yes: "YES", no: "NO" }),
     color: "#c9ccd1",
     palette: Object.freeze({
       hi: "#ffffff",
@@ -230,7 +231,8 @@ export function validateRules(raw) {
 // - DEFAULT_MODE：默认一局定输赢
 // - GAME_MIN_ROUNDS / GAME_MAX_ROUNDS：自定义局数 X 范围 [2,9]
 // - REQUIRED_KEYS：rules 结构必填键单一声明处（滑动/动画参数）
-// - THEMES：2 套主题（gold/silver），每套 name/faces{show,yes,no}/color
+// - THEMES：3 套主题（gold/silver 文字标记「运/YES/NO」+ anya 图片路径，PL007.3），
+//   每套 name/faces{show,yes,no}/color/palette 五色
 // - DEFAULT_THEME：默认主题 gold
 // - toNumber(value, label)：弹性解析内核（数字直用/字符串 trim 转换/其余拒绝）
 // - validateGameConfig({x,y})：局数契约——X∈[2,9]、Y∈[2,X] 整数、Y≤X

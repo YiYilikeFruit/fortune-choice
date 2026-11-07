@@ -291,6 +291,48 @@ fortune-choice/
 
 ---
 
+## PL007. 界面信息层补全与视觉收敛（2026-11-07 定案）
+
+> 来源：taste-skill UI 检测（lint 30 FAIL + inspect 3 FAIL/2 WARN，证据 .temp/taste-before/report.json；检测日期 2026-11-07，评审基于实测数值+源码走读，截图在 .temp/taste-before/ 供人工复核）
+> 状态：✅ 已实施（V0.1.1.0，2026-11-07：verify_rules + verify_pl007_ui 全绿，inspect 复测 no-title/emoji 清零；任务清单见 x.progress.md）
+
+### 背景
+
+- 首屏无 h1 无产品名，全页仅 10 词，5 秒认知测试不过（inspect: no-title FAIL；挂小红书笔记用户点进来第一眼不知是什么）
+- 币面/成绩/结果 emoji 依赖（rules.js THEMES faces 的 🪙✅❌👍👎 + ui.js:378），待机主视觉为 114px 系统字体 emoji，跨机型渲染不一且质感廉价
+- 多局进行中无比分可视：renderProgress 非终局态从未调用（main.js settle 只更新 round-result），三局两定打完第 2 局无处看当前比分
+- 强调色 3 个（金 --accent / 绿 --accent-2 / 粉 --danger）超"一底一墨一强调"；结果揭晓 20px 弱于按钮存在感；待机态结果区 92px 空置（panel-void 实测 67px 空带）
+- 桌面 1440 下 33% 空白（hero-void；主战场移动 WebView，PC 预览场景降权）；27 处硬币本体渐变被 lint 机械判 FAIL（实为 PL002-004 材质体系，有意保留）
+
+### 决策结论（2026-11-07 与用户确认）
+
+1. **顶部加 h1 标题行（常驻小标题）**：「幸运硬币」+ 副题"抛硬币，替你做决定"，常驻显示不淡出（用户拍板：常驻小标题方案，不占硬币区空间）
+2. **比分进度条**：硬币区下方（结果区上方）；圆点形态——yes 计数金色实点、no 计数银灰实点、剩余局空心点 + "先取 N 局获胜"文案；数据全从 game 快照读（results 计数/totalRounds/overtime）；加赛态显示"加赛 · 一局定胜负"；one-shot 模式隐藏（无多局语义）
+3. **去 emoji 化（用户拍板：YES / NO）**：gold/silver 主题币面文字标记——show 面「运」字作品牌标记、yes 面「YES」、no 面「NO」（沿用 .face-mark 浮雕 drop-shadow 体系，字号按 --coin-size 比例适配；「运」字形态实施时目检定稿）；成绩列表 ✅❌ → 金/银圆点 + YES/NO 文字；anya 图片主题不动
+4. **重置按钮墨色（用户拍板）**：#reset-btn 背景从 --accent-2 绿改墨色填充（--text 系深底浅字）；--accent-2/--danger 从常驻 chrome 退役，降级为语义色（仅未来成功/失败时刻使用）
+5. **结果揭晓强化**：#round-result 20px → 32px 级 + 落定 scale 弹入（动效只动 transform/opacity，参考 kinetics 弹簧配方参数）；终局答案更大或取金色
+6. **待机态引导**：结果区待机显示当前模式说明（one-shot："抛一次 · 立刻定"；三局两定："三局两定 · 先取 2 局获胜"；五局三定/自定义同理），settle 覆盖、resetGame 复位——消解 92px 空置
+7. **桌面约束**：#app max-width 480px 居中（背景保持夜色满屏），消解 1440 hero-void
+8. **lint 标注**：硬币本体渐变相关规则块加 `/* taste-skill-ignore */`（语义标注"有意保留的材质渲染"，不删 PL002-004 成果）
+9. **不做项**：不引入 GSAP（现有 rAF + CSS transition 体系够用，避免内嵌 ~70KB 依赖；后续动效复杂化再评估）；高光闪烁彩蛋沿 y.problem.md 待评估；不换字体（system-ui 体系保持，离线包零网络字体）
+
+### 设计要点
+
+- 标题行：index.html #mode-area 上方新增 header（h1 + p 副题），css 小号排（h1 约 20px/600、副题 13px/--text-dim），单屏布局 #app flex 首行 flex:0 0 auto
+- 比分条：ui.js 新增 `renderScoreProgress(el, game)` 纯渲染函数（DOM stub 可测）；main.js settle 非终局分支落定后更新、resetGame 复位隐藏；圆点用 css 类（金实/银实/空心），文案由模式与 game 快照推导（"先取 Y 局获胜"取自 cfg.y）
+- 币面文字：rules.js THEMES gold/silver faces 值改「运/YES/NO」（契约层同步：verify_rules 三面键断言不再绑 emoji 字符）；ui.js _setFaceMark 文字路径字号适配（emoji 字号 calc 沿用，字体走 system-ui 粗体 + letter-spacing）
+- 色收敛：css/coin.css #reset-btn 配色改墨色；grep 断言 accent-2/danger 无常驻 chrome 引用
+- 约束核查：纯 CSS3 + DOM，无新增依赖无网络资源；动效只动 transform/opacity；触区 ≥44px 不回退；零 emoji 后跨机型渲染一致性提升
+- 涉及文件：index.html、css/coin.css、js/ui.js、js/main.js、js/rules.js、.temp/verify_rules.js（契约同步）
+- 不涉及：game.js/random.js/coin.js/emboss.js（比分数据从 game 快照读，纯逻辑零改动）
+
+### 关联
+
+- 版本：V0.1.1.0（2026-11-07 随 PL007 提交推进；次版本位升级=界面功能级变更；跳过 PL006 编号——AGENTS.md 操作教训已引用 PL006 语义，避免歧义）
+- 验证：.temp/verify_pl007_ui.js（DOM stub：h1/待机文案/比分各形态/零 emoji/按钮色）+ taste-skill inspect.mjs --app 复测（no-title/emoji/hero-void/panel-void 清零，渐变转 ignore 后 lint 归零）+ run_all 全量 + 浏览器目检（390 主档 + 320/430/1440）
+
+---
+
 ## 附录 A001：全量代码审计报告（第1轮，2026-08-28）
 
 > 范围：根级文档（AGENTS.md/README.md/z.plan.md/x.progress.md）+ index.html + js/_.js + css/coin.css + config/_.json；未审 .temp/.reference/.git

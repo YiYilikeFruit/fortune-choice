@@ -44,6 +44,7 @@ export function collectRefs(doc = document) {
   const byId = (id) => doc.getElementById(id);
   // 骨架必填节点（按真实 id 报告缺失，便于对照 index.html）
   const REQUIRED_IDS = [
+    "title-bar",
     "mode-buttons",
     "custom-picker",
     "slot-x",
@@ -53,6 +54,7 @@ export function collectRefs(doc = document) {
     "coin-scene",
     "coin",
     "round-result",
+    "score-progress",
     "progress",
     "reset-btn",
     "score-btn",
@@ -67,6 +69,7 @@ export function collectRefs(doc = document) {
   }
   const coin = byId("coin");
   const refs = {
+    titleBar: byId("title-bar"),
     modeButtons: byId("mode-buttons"),
     picker: byId("custom-picker"),
     slotX: byId("slot-x"),
@@ -80,6 +83,7 @@ export function collectRefs(doc = document) {
       no: coin ? coin.querySelector(".face-no") : null,
     },
     roundResult: byId("round-result"),
+    scoreProgress: byId("score-progress"),
     progress: byId("progress"),
     resetBtn: byId("reset-btn"),
     scoreBtn: byId("score-btn"),
@@ -267,6 +271,10 @@ function _setFaceMark(faceEl, text) {
   } else {
     const span = document.createElement("span");
     span.className = "face-mark";
+    // 单字符标记（PL007.3 show 面「运」）放大字号，多字符 YES/NO 用默认小字号
+    if (typeof text === "string" && text.length <= 1) {
+      span.classList.add("single");
+    }
     span.textContent = text;
     mark.appendChild(span);
   }
@@ -305,11 +313,71 @@ export function setCoinAngle(coinEl, angle) {
   coinEl.style.transform = `rotateY(${angle}deg)`;
 }
 
-// 渲染单局/终局结果文字
+// 待机引导文案生成（PL007.1b，纯函数）：按模式与局数契约推导模式说明
+// 输入：mode 模式枚举值、{x, y} 局数契约（custom 用）；输出：说明文案字符串
+export function idleHintFor(mode, { x, y } = {}) {
+  switch (mode) {
+    case "one-shot":
+      return "抛一次 · 立刻定";
+    case "three-two":
+      return "三局两定 · 先取 2 局获胜";
+    case "five-three":
+      return "五局三定 · 先取 3 局获胜";
+    case "custom":
+      return `${x} 局 ${y} 定 · 先取 ${y} 局获胜`;
+    default:
+      return "";
+  }
+}
+
+// 渲染待机引导（PL007.1b）：模式说明弱化显示（idle 态小字），落定结果覆盖
+// 输入：el 结果文字元素、text 文案；输出：无
+export function renderIdleHint(el, text) {
+  el.textContent = text;
+  el.classList.remove("final", "pop");
+  el.classList.add("idle");
+}
+
+// 渲染单局/终局结果文字（PL007.4b：落定弹入动画，reduced-motion 由 CSS 关闭）
 // 输入：el、text、isFinal；输出：无
 export function renderRoundResult(el, text, isFinal = false) {
   el.textContent = text;
+  el.classList.remove("idle", "final", "pop");
   el.classList.toggle("final", isFinal);
+  // 重触发弹入：先移除再强制 reflow（与 bounce 同手法）
+  void el.offsetWidth;
+  el.classList.add("pop");
+}
+
+// 渲染比分进度条（PL007.2）：yes 金实点 / no 银实点 / 剩余空心 + 先取 Y 局文案；
+// 加赛未终局替换文案为"加赛 · 一局定胜负"；one-shot 整体隐藏（无多局语义）
+// 输入：el 比分容器、game 对局快照（x/y/results/overtime/finished/mode）；输出：无
+export function renderScoreProgress(el, game) {
+  if (game.mode === "one-shot") {
+    el.classList.add("hidden");
+    return;
+  }
+  el.classList.remove("hidden");
+  el.textContent = "";
+  const dots = document.createElement("div");
+  dots.className = "sp-dots";
+  for (const face of game.results) {
+    const dot = document.createElement("span");
+    dot.className = `sp-dot ${face === "yes" ? "dot-yes" : "dot-no"}`;
+    dots.appendChild(dot);
+  }
+  for (let i = game.results.length; i < game.x; i++) {
+    const dot = document.createElement("span");
+    dot.className = "sp-dot dot-empty";
+    dots.appendChild(dot);
+  }
+  const label = document.createElement("span");
+  label.className = "sp-label";
+  label.textContent =
+    game.overtime && !game.finished
+      ? "加赛 · 一局定胜负"
+      : `先取 ${game.y} 局获胜`;
+  el.append(dots, label);
 }
 
 // 渲染进度指示
@@ -373,17 +441,21 @@ export function buildScoreContent(score) {
       const no = document.createElement("span");
       no.className = "no";
       no.textContent = `第${item.round}局`;
+      // 去 emoji 化（PL007.3b）：金/银圆点 + YES/NO 文字，跨机型渲染一致
+      const dot = document.createElement("span");
+      dot.className =
+        item.face === "yes" ? "score-dot dot-yes" : "score-dot dot-no";
       const face = document.createElement("span");
       face.className = "result-face";
-      face.textContent = item.face === "yes" ? "✅" : "❌";
-      li.append(no, face);
+      face.textContent = item.face === "yes" ? "YES" : "NO";
+      li.append(no, dot, face);
       list.appendChild(li);
     }
   }
   return list;
 }
 
-// 构建设置浮层内容：硬币主题切换（2 套）
+// 构建设置浮层内容：硬币主题切换（PL007.3：色点 + 名称，零 emoji）
 // 输入：currentTheme 当前主题名、onChange 回调；输出：内容节点
 export function buildSettingsContent(currentTheme, onChange) {
   const box = document.createElement("div");
@@ -393,7 +465,13 @@ export function buildSettingsContent(currentTheme, onChange) {
     btn.type = "button";
     btn.className = "theme-option";
     btn.dataset.theme = name;
-    btn.textContent = `${theme.faces.show} ${theme.name}`;
+    // 主题色圆点前置（替代原 faces.show emoji 拼接）
+    const swatch = document.createElement("span");
+    swatch.className = "theme-swatch";
+    swatch.style.background = theme.color;
+    const label = document.createElement("span");
+    label.textContent = theme.name;
+    btn.append(swatch, label);
     btn.classList.toggle("active", name === currentTheme);
     btn.addEventListener("click", () => onChange(name));
     box.appendChild(btn);
@@ -406,16 +484,20 @@ export function buildSettingsContent(currentTheme, onChange) {
 // - CN_DIGITS：中文数字表；PICKER_MIN/MAX：自定义局数范围 [2,9]
 // - cnDigit(n)：数字→中文；nextModeState(current,target)：模式互斥状态机（纯函数）
 // - yRangeFor(x)：定数可用范围联动（纯函数）
-// - collectRefs(doc)：骨架元素引用收集，缺失 fail-fast
+// - collectRefs(doc)：骨架元素引用收集（含 title-bar/score-progress，PL007），缺失 fail-fast
 // - buildSlot(slotEl)：构建滑动选择器，返回轨道/吸附/取值句柄
 // - buildCoinEdge(coinEl,n,radius,thick)：构建圆柱侧面壁（PL002，写 --seg-arc）
 // - shadeHex(hex,factor)：派生加深色（齿环暗色等，PL002）
-// - _setFaceMark(faceEl,text)：面标记分派（emoji→span / 图片路径→img，PL004）
+// - _setFaceMark(faceEl,text)：面标记分派（文字→span / 图片路径→img，PL004/PL007）
 // - renderCoinTheme / setCoinShowFace / setCoinAngle：硬币渲染（palette 写变量，PL003）
-// - renderRoundResult / renderProgress / showReset：结果区
+// - idleHintFor(mode,{x,y})：待机模式说明文案生成（纯函数，PL007.1b）
+// - renderIdleHint / renderRoundResult：待机引导弱化显示 / 结果文字落定弹入（PL007.4b）
+// - renderScoreProgress(el,game)：比分进度条（金/银/空心圆点+文案，加赛态，PL007.2）
+// - renderProgress / showReset：进度指示 / 重置按钮显隐
 // - showOverlayCard / hideOverlay / showToast：浮层与提示
-// - buildScoreContent / buildSettingsContent：成绩/设置浮层内容构建
+// - buildScoreContent / buildSettingsContent：成绩（圆点+文字，PL007.3b）/设置（色点+名称，PL007.3）浮层内容
 // 设计理由：渲染层只画快照不改业务状态（装配层 main.js 是唯一业务容器）；
-//   纯函数内核（模式互斥/定数联动）无头可测，DOM 表现层由浏览器冒烟覆盖
+//   纯函数内核（模式互斥/定数联动/待机文案）无头可测，DOM 表现层由浏览器冒烟覆盖；
+//   去 emoji 化后跨机型渲染一致（系统 emoji 字体不再参与视觉）
 // 异常处理：collectRefs 骨架缺失 fail-fast；其余渲染路径零异常不中断
 // 关联配置：rules.js THEMES/DEFAULT_THEME、coin.js 双面角；消费方 main.js

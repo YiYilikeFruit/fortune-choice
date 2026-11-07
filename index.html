@@ -11,6 +11,12 @@
   </head>
   <body>
     <main id="app">
+      <!-- 顶部标题行（PL007.1）：常驻小标题，5 秒认知兜底 -->
+      <header id="title-bar" aria-label="应用标题">
+        <h1>幸运硬币</h1>
+        <p>抛硬币，替你做决定</p>
+      </header>
+
       <!-- 顶部模式区：互斥按钮 + 自定义数字滑动选择器 -->
       <header id="mode-area" aria-label="对局模式">
         <div id="mode-buttons">
@@ -58,6 +64,13 @@
           </div>
         </div>
       </section>
+
+      <!-- 比分进度条（PL007.2）：多局进行中显示圆点比分，one-shot 隐藏 -->
+      <section
+        id="score-progress"
+        class="hidden"
+        aria-label="对局比分"
+      ></section>
 
       <!-- 结果展示区 -->
       <section id="result-area" aria-label="结果区">

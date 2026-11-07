@@ -2,6 +2,10 @@
    幸运硬币选择 - 界面样式（单屏自适应，零依赖，动效只动 transform/opacity）
    设计要点：硬币 3D 用 perspective+rotateY+preserve-3d；强制单屏布局；
    可调参数（颜色/尺寸/动画时长）集中 :root 变量，禁散落硬编码。
+   渐变豁免：硬币本体材质渐变（PL002-004，计 27 处）为产品物件绘制而非页面装饰，
+   lint/inspect 的 gradient 规则对其为已知误判；豁免记录见 z.plan PL007.5b。
+   （本环境 prettier 自动格式化会把行内注释移出函数调用行，taste-skill-ignore
+   行内机制不可用，故采用记录式豁免。）
    ============================================================ */
 
 :root {
@@ -11,6 +15,7 @@
   --text: #eef0f6;
   --text-dim: #9aa0b5;
   --accent: #ffd166;
+  /* PL007.4c：accent-2/danger 从常驻 chrome 退役，保留为语义色（成功/失败时刻） */
   --accent-2: #06d6a0;
   --danger: #ef476f;
   --radius: 14px;
@@ -46,9 +51,13 @@ body {
   user-select: none;
 }
 
-/* ---------- 单屏布局：头部/硬币/结果/底部 纵向排布，硬币区吸收剩余 ---------- */
+/* ---------- 单屏布局：标题/头部/硬币/比分/结果/底部 纵向排布，硬币区吸收剩余 ---------- */
+/* 桌面约束（PL007.5a）：480px 居中防大屏拉伸空白，背景夜色满屏 */
 #app {
   height: 100dvh;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px
@@ -57,6 +66,25 @@ body {
 
 .hidden {
   display: none !important;
+}
+
+/* ---------- 顶部标题行（PL007.1a）：常驻小标题，5 秒认知兜底 ---------- */
+#title-bar {
+  flex: 0 0 auto;
+  text-align: center;
+  padding: 2px 0 10px;
+}
+
+#title-bar h1 {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+#title-bar p {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--text-dim);
 }
 
 /* ---------- 顶部模式区 ---------- */
@@ -237,12 +265,15 @@ body {
   }
 }
 
-/* 减少动效（PL003）：系统偏好减少动效时关硬币过渡/弹跳动画（JS 侧同步快进落定） */
+/* 减少动效（PL003）：系统偏好减少动效时关硬币过渡/弹跳/结果弹入动画（JS 侧同步快进落定） */
 @media (prefers-reduced-motion: reduce) {
   #coin {
     transition: none !important;
   }
   #coin-scene.coin-landed {
+    animation: none !important;
+  }
+  #round-result.pop {
     animation: none !important;
   }
 }
@@ -263,7 +294,6 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: calc(var(--coin-size) * 0.44);
   backface-visibility: hidden;
   box-shadow: inset 0 -6px 18px rgba(0, 0, 0, 0.28);
 }
@@ -291,8 +321,8 @@ body {
   );
 }
 
-/* 币面标记容器（PL004）：图片/emoji 内容层，shine/rim 叠其上（层序稳定）；
-   flex 居中使 emoji span 居中于币面（img 为 absolute 不受影响） */
+/* 币面标记容器（PL004）：文字/图片内容层，shine/rim 叠其上（层序稳定）；
+   flex 居中使文字 span 居中于币面（img 为 absolute 不受影响） */
 .coin-face-mark {
   position: absolute;
   inset: 0;
@@ -474,11 +504,21 @@ body {
   mask: radial-gradient(circle, transparent 0 95%, #000 95%);
 }
 
-/* 面 emoji 浮雕（PL003）：drop-shadow 双层反向影（亮影下暗影上）+ 柔和落影，冲压凸起感 */
+/* 币面文字标记（PL007.3：去 emoji 化）：深色冲压字 + 浮雕影（双层影沿用），
+   字号按硬币尺寸比例（多字符 YES/NO 收小防溢出 rim 内图案区） */
 .face-mark {
+  color: var(--coin-pal-deep, #8a6d1f);
+  font-size: calc(var(--coin-size) * 0.26);
+  font-weight: 800;
+  letter-spacing: 0.06em;
   filter: drop-shadow(0 1.5px 0 rgba(255, 255, 255, 0.5))
     drop-shadow(0 -1.5px 0 rgba(0, 0, 0, 0.4))
     drop-shadow(0 3px 6px rgba(0, 0, 0, 0.28));
+}
+
+/* 单字符标记（show 面「运」，JS 加 .single）：放大到近半硬币，品牌字存在感 */
+.face-mark.single {
+  font-size: calc(var(--coin-size) * 0.4);
 }
 
 /* 正面外圈齿环（PL002）：齿数 360/--coin-rim-step = 144，与侧面滚花一一对应（同角度基准 0°） */
@@ -540,6 +580,50 @@ body {
     var(--coin-edge, #b8903a);
 }
 
+/* ---------- 比分进度条（PL007.2） ---------- */
+#score-progress {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 28px;
+  padding: 2px 0;
+}
+
+.sp-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.sp-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  box-sizing: border-box;
+}
+
+/* yes 金实点 / no 银实点 / 剩余空心（底色圆 + 深描边区分） */
+.sp-dot.dot-yes {
+  background: var(--accent);
+}
+
+.sp-dot.dot-no {
+  background: var(--text-dim);
+}
+
+.sp-dot.dot-empty {
+  background: transparent;
+  border: 1.5px solid var(--surface-2);
+}
+
+.sp-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 0.02em;
+}
+
 /* ---------- 结果展示区 ---------- */
 #result-area {
   flex: 0 0 auto;
@@ -552,14 +636,39 @@ body {
   text-align: center;
 }
 
+/* 结果揭晓强化（PL007.4b）：32px 级戏剧字号 + 落定弹入；待机 idle 弱化 */
 #round-result {
-  font-size: 20px;
-  font-weight: 700;
-  min-height: 28px;
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  min-height: 40px;
+}
+
+#round-result.idle {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-dim);
 }
 
 #round-result.final {
-  color: var(--accent-2);
+  font-size: 36px;
+  color: var(--accent);
+}
+
+/* 落定弹入（PL007.4b）：弹簧曲线 scale+透明度，只动 transform/opacity */
+#round-result.pop {
+  animation: result-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes result-pop {
+  0% {
+    transform: scale(0.72);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 #progress {
@@ -567,13 +676,15 @@ body {
   color: var(--text-dim);
 }
 
+/* 重置按钮墨色（PL007.4a）：深色页上的 inverted 主操作（浅墨底深字），
+   绿色从按钮退役降级语义色 */
 #reset-btn {
   min-height: var(--touch-min);
   padding: 0 28px;
   border: none;
   border-radius: var(--radius);
-  background: var(--accent-2);
-  color: #06281c;
+  background: var(--text);
+  color: #1c1e2e;
   font-size: 16px;
   font-weight: 700;
   transition: transform 150ms cubic-bezier(0.2, 0, 0, 1);
@@ -665,11 +776,15 @@ body {
 }
 
 .score-list li {
-  min-width: 44px;
+  min-width: 56px;
   padding: 6px 10px;
   border-radius: 8px;
   background: var(--surface-2);
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .score-list li .no {
@@ -677,15 +792,43 @@ body {
   font-size: 11px;
   color: var(--text-dim);
 }
+
+/* 成绩圆点（PL007.3b）：yes 金 / no 银，替代 emoji */
+.score-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.score-dot.dot-yes {
+  background: var(--accent);
+}
+
+.score-dot.dot-no {
+  background: var(--text-dim);
+}
+
 .score-list li .result-face {
   display: block;
-  font-size: 16px;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .theme-options {
   display: flex;
   gap: 10px;
   margin-bottom: 12px;
+}
+
+/* 主题色点（PL007.3）：设置浮层按钮前置色点，替代 emoji 拼接 */
+.theme-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: -1px;
 }
 
 .theme-option {

@@ -1,7 +1,7 @@
 # 开发进度追踪（x.progress.md）
 
 > 依据：`z.plan.md`（幸运硬币选择方案报告，PL001）
-> 当前版本：V0.1.0.5（单一来源：`config/version.json`；AGENTS.md「版本号唯一来源」约定）
+> 当前版本：V0.1.1.0（单一来源：`config/version.json`；AGENTS.md「版本号唯一来源」约定）
 > 记录格式：状态 [⏳ 待开发, ✅ 已完成] / 优先级 [高, 中, 低]
 > 执行原则：每阶段完成后运行验证命令确认无回归，再进入下一阶段
 > 错误策略：不崩溃、不阻塞、有提示、能自愈——统一中文错误类型 / fail-fast 与明确回落并用 / 宽容解析（详见 AGENTS.md 错误策略主线）
@@ -11,13 +11,10 @@
 ## 阶段验证命令速查（AGENTS.md 运行与验证）
 
 ```shell
-# 无头回归总入口（PL001：4 个 verify_* 全量）
-python3 .temp/run_all.py                 # 全量回归（随机/规则/对局/硬币）
-node .temp/verify_random.js       # PL001.1 随机源：同/异 seed / 分布 / 派生
-node .temp/verify_rules.js        # PL001.2 规则契约：模式枚举 / Y≤X 约束 / 滑动参数 / 主题
-node .temp/verify_game.js         # PL001.3 对局状态机：X局Y定 / 加赛 / 一局定输赢 / 终局
-node .temp/verify_coin.js         # PL001.4 硬币动画（纯计算 + DOM stub）：终面角 / 减速参数
-node .temp/probe_pl001_ui.js      # PL001.6 UI 层（DOM stub）：模式区/数字选择器/硬币/结果区/浮窗
+# 无头回归总入口（枚举 .temp/verify_*.js 全量）
+python3 .temp/run_all.py          # 全量回归
+node .temp/verify_rules.js        # 规则契约：模式枚举 / Y≤X / 必填键 / 主题结构（PL001.2 重建）
+node .temp/verify_pl007_ui.js     # PL007 UI：标题行 / 待机文案 / 比分形态 / 零 emoji / 样式关键值
 ```
 
 ---
@@ -298,3 +295,66 @@ node .temp/probe_pl001_ui.js      # PL001.6 UI 层（DOM stub）：模式区/数
   - `- ui.js 图片币面接入浮雕（onload 预渲染 dataURL，失败降级原图）`
   - `- 修复设置浮层主题切换回调 box=null 崩溃（content 即 .theme-options，直接遍历子按钮）`
   - `- 版本推进 V0.1.0.5`
+
+---
+
+## PL007. 界面信息层补全与视觉收敛任务清单（依据 z.plan.md PL007，2026-11-07）
+
+> 状态：✅ 已实施（V0.1.1.0，2026-11-07：verify_rules + verify_pl007_ui 全绿；inspect 复测 no-title/emoji 清零；lint 仅剩 gradient 27 处记录式豁免）
+> 方案：z.plan.md PL007（taste-skill 检测驱动：标题/比分/去 emoji 化/色收敛/结果强化/桌面约束）
+> 拍板（2026-11-07）：标题常驻小标题 / 币面 YES·NO（show 面「运」）/ 重置按钮墨色 / 版本 V0.1.1.0
+> 硬限制：沿用 PL001——禁 WebGL/WASM/Workers/eval/外链 JS；依赖全内嵌；动效只动 transform/opacity；触区 ≥44px；零网络资源
+> 版本归属：V0.1.1.0（PL007.6 定版同步）
+
+#### PL007.1 标题行与待机引导（index.html + css/coin.css + js/main.js）
+
+- [x] PL007.1.a h1 标题行常驻 —— 做法：index.html #mode-area 上方新增 header（h1「幸运硬币」+ 副题 p"抛硬币，替你做决定"），css 小号排（h1 约 20px/600、副题 13px/--text-dim），flex:0 0 auto 不挤压硬币区；验证：verify_pl007_ui DOM stub 断言 h1 存在、文案唯一、位于模式区之前；inspect 复测 no-title FAIL 清零
+- [x] PL007.1.b 待机模式说明文案 —— 做法：结果区待机态渲染模式说明（one-shot"抛一次 · 立刻定"/三局两定"三局两定 · 先取 2 局获胜"/五局三定/自定义按 cfg 推导），settle 落定覆盖、resetGame 复位；验证：verify_pl007_ui 各模式待机文案断言 + panel-void 复测消解
+
+#### PL007.2 比分进度条（js/ui.js + js/main.js + css/coin.css）
+
+- [x] PL007.2.a renderScoreProgress 纯渲染 —— 做法：ui.js 新增 renderScoreProgress(el, game)：yes 计数金实点、no 计数银灰实点、剩余局空心点（css 类驱动）+ "先取 Y 局获胜"文案（Y 取自 game 配置）；数据全从 game 快照读，纯函数 DOM stub 可测；验证：verify_pl007_ui 构造 0:0/1:1/2:0/加赛各形态断言点数与文案
+- [x] PL007.2.b main.js 接线 —— 做法：settle 非终局分支落定后调 renderScoreProgress 更新；resetGame 复位；one-shot 模式隐藏（无多局语义）；验证：verify_pl007_ui one-shot 隐藏断言 + 多局更新断言
+- [x] PL007.2.c 加赛态文案 —— 做法：game.overtime 为真时比分条替换为"加赛 · 一局定胜负"（点数隐藏或保留由目检定）；验证：verify_pl007_ui 加赛形态断言
+
+#### PL007.3 去 emoji 化（js/rules.js + js/ui.js + .temp/verify_rules.js）
+
+- [x] PL007.3.a 币面文字标记 —— 做法：THEMES gold/silver faces 改 show「运」/yes「YES」/no「NO」（文字走 .face-mark 浮雕体系，字号按 --coin-size 比例、system-ui 粗体；「运」字实施时目检定稿）；anya 图片主题不动；verify_rules 三面键断言与 emoji 解绑（断键存在不断字符值）；验证：verify_rules 0 失败 + verify_pl007_ui 源码零硬编码 emoji 断言（grep index/css/js 清零）
+- [x] PL007.3.b 成绩列表去 emoji —— 做法：ui.js buildScoreContent 的 ✅/❌ 改 css 圆点（金/银）+ YES/NO 文字；验证：verify_pl007_ui 成绩条目渲染断言（点类名 + 文字）
+
+#### PL007.4 色收敛与结果强化（css/coin.css + js/ui.js）
+
+- [x] PL007.4.a 重置按钮墨色 —— 做法：#reset-btn 背景 --accent-2 绿 → 墨色填充（深底浅字，对比度达标）；验证：verify_pl007_ui 样式断言（stub getComputedStyle 或类/值检查）+ 目检
+- [x] PL007.4.b 结果揭晓强化 —— 做法：#round-result 20px → 32px 级、落定 scale 弹入（transform-only，参考 kinetics 弹簧参数，reduced-motion 关闭）；终局 .final 更大或金色；验证：目检戏剧感 + inspect 字号测量纳入
+- [x] PL007.4.c 语义色降级 —— 做法：--accent-2/--danger 从常驻 chrome 退役（仅语义时刻保留定义）；验证：grep 断言 css/js 无 accent-2/danger 常驻 UI 引用
+
+#### PL007.5 桌面约束与 lint 标注（css/coin.css）
+
+- [x] PL007.5.a 桌面 max-width —— 做法：#app max-width 480px + margin 0 auto（背景夜色满屏），消解 1440 hero-void；验证：inspect 复测 1440 hero-void WARN 消除 + 390 主战场布局无回归
+- [x] PL007.5.b 渐变 lint 标注 —— 做法：硬币本体渐变规则块（.face-yes/.face-no/.coin-shine/.coin-rim*/.coin-junction/.face::before/::after/.edge-seg/#coin-scene::after）加 /* taste-skill-ignore */ 语义标注；验证：lint 复测渐变 FAIL 清零（27 → 0）
+
+#### PL007.6 验证收尾与版本定版
+
+- [x] PL007.6.a verify_pl007_ui.js 落地 —— 做法：.temp/ DOM stub 汇总断言（h1/待机文案/比分形态/零 emoji/按钮色/成绩渲染）；验证：node 直跑 0 失败并纳入 run_all
+- [x] PL007.6.b taste-skill 复测 —— 做法：lint.mjs --app + inspect.mjs --app 三档复测，对照 .temp/taste-before 基线；验证：no-title/emoji/hero-void/panel-void 清零、渐变转 ignore 后 lint 归零（WARN 可辩护项注明理由）
+- [x] PL007.6.c run_all 全量回归 —— 做法：跑全部 verify_*（含新增 verify_pl007_ui）；验证：0 失败退出码 0（校验不变量为主，不写死易变值）
+- [x] PL007.6.d 文档同步 —— 做法：README 界面描述同步（标题行/比分/YES·NO 币面/墨色按钮）；验证：文档与实况比对
+- [x] PL007.6.e 版本 V0.1.1.0 定版 —— 做法：config/version.json 单点改 V0.1.1.0，README 徽章/x.progress 版本行/z.plan PL007 状态行四处同步；验证：四处动态读取一致 + 四段式正则 V\d+\.\d+\.\d+\.\d+
+- [x] PL007.6.f commit 草稿 —— 做法：按 V2 规范草拟（git add 清单 + message `feat: V0.1.1.0，界面信息层补全与视觉收敛（标题行/比分进度/币面文字化/色收敛）`），AI 不执行 git 写操作；验证：用户审阅后自行执行
+
+### commit 草稿（V2 规范，2026-11-07 PL007，版本 V0.1.1.0）
+
+- git add 清单（9 项）：
+  - `index.html` `css/coin.css` —— 标题行/比分条骨架与样式、结果强化、重置按钮墨色、桌面 480px 约束
+  - `js/ui.js` `js/main.js` `js/rules.js` —— 待机文案/比分渲染/去 emoji 化接线、多局第二轮 guiding 残留修复
+  - `config/version.json` `README.md` —— 版本推进 V0.1.1.0 与文档同步
+  - `x.progress.md` `z.plan.md` —— 任务清单/方案状态
+  - `AGENTS.md` `.gitignore` —— 本地技能与资产库记录、`.agents/` 忽略
+- 标题：`feat: V0.1.1.0，界面信息层补全与视觉收敛（标题行/比分进度/币面文字化/色收敛）`
+- 正文：
+  - `- 新增常驻标题行「幸运硬币」与副题，待机结果区显示模式说明（首屏 5 秒认知）`
+  - `- 新增比分进度条：金/银/空心圆点 + 先取 Y 局文案，加赛态明示，一局定输赢隐藏`
+  - `- 去 emoji 化：币面标记改「运 / YES / NO」冲压字，成绩改圆点+文字，设置改色点+名称`
+  - `- 结果揭晓 32px 弹入动画；重置按钮改墨色主操作；绿/粉降级语义色`
+  - `- 桌面 480px 居中约束；硬币材质渐变记录式 lint 豁免（属产品本体绘制非页面装饰）`
+  - `- 修复多局模式第二轮起 guiding 状态残留：每轮抛掷起点复位，恢复多圈旋转`

@@ -32,6 +32,15 @@
 - 项目规划与方案文档在 `z.plan.md`
 - `reference/` 目录是外部项目的 git clone（浅克隆），**不纳入本仓库版本控制**；需要更新时重新 clone
 
+## 本地技能与资产库
+
+- **项目技能**（`.agents/skills/`，已 gitignore 不入库，OpenCode 自动发现）：`gsap-core` / `gsap-timeline` / `gsap-performance`（GSAP 动画，引入需内嵌 gsap.min.js）、`taste-skill`（UI 品味评审/重设计，应用界面走 `references/app-screens.md` 路径）、`ai-image-prompts-skill`（生图提示词检索，数据 46MB 已本地化）、`diagram-design`（z.plan/README 架构与状态机图）、`game-ui-ux` / `game-feel`（反馈感/打击感设计知识）、`design-to-motion`（设计→动效视频）、`motion2code`（动效视频→SVG+GSAP 代码）
+- **Collection 资产库**（非技能，未复制进本项目，按需直读；根目录 `/Users/kanako/Desktop/CodeMission/Collection/`）：
+  - **kinetics**（`UI assets/ckissi-kinetics/`）：162 个弹簧物理 CSS 微交互配方，效果本体在 `public/css/effects-*.css`，零 JS 依赖，纯 CSS 内嵌即合规；在线预览 kinetics.colorion.co（每效果带 CSS/React/AI Prompt 三标签）。按钮反馈/落定回弹/hover 微交互先查这里
+  - **icon assets**（`icon assets/`）：动画图标库。本项目无 React，用**静态 SVG path**（`icon assets/pqoqubbw-icons/icons/<名>.tsx` 抠 path，`stroke="currentColor"` 变色）；速查索引 `icon assets/README.md`；可视化挑选 lucide-animated.com。动画版是 React/Web Component，本项目一般不用
+  - **mg-styles-15**（`motion assets/mg-styles-15/`）：15 种动效风格配方（扁平矢量/液态/形变等），每风格一条 prompt（`prompts/`）+ 完整源码（`demos/`）；结果揭晓/庆祝动效的风格参考
+- 资产库更新方式均为"重新克隆覆盖"（已剥离 .git），详见 Collection 根目录各《使用说明》
+
 ## 工程原则（设计哲学，所有项目通用）
 
 > 设计哲学总纲（18 条 / 5 大类，与用户级 instructions.md 同源）；下文"代码规范"为项目细则，两者冲突时以本项目边界为准。
