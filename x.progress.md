@@ -1,7 +1,7 @@
 # 开发进度追踪（x.progress.md）
 
 > 依据：`z.plan.md`（幸运硬币选择方案报告，PL001）
-> 当前版本：V0.1.1.0（单一来源：`config/version.json`；AGENTS.md「版本号唯一来源」约定）
+> 当前版本：V0.1.2.0（单一来源：`config/version.json`；AGENTS.md「版本号唯一来源」约定）
 > 记录格式：状态 [⏳ 待开发, ✅ 已完成] / 优先级 [高, 中, 低]
 > 执行原则：每阶段完成后运行验证命令确认无回归，再进入下一阶段
 > 错误策略：不崩溃、不阻塞、有提示、能自愈——统一中文错误类型 / fail-fast 与明确回落并用 / 宽容解析（详见 AGENTS.md 错误策略主线）
@@ -100,14 +100,6 @@ node .temp/verify_pl007_ui.js     # PL007 UI：标题行 / 待机文案 / 比分
 - [x] PL001.8.d 离线包完整性核查：index.html + css/ + js/ + config/ 全内嵌、零外部 CDN 外链、零禁用 API（WebGL/Workers/eval/new Function/document.write/内联事件 grep 清零）——验证：grep 反向断言
 - [x] PL001.8.e commit 草稿按 V2 规范给出（git add 清单 + message，形如 `feat: V0.1.0.0，丢硬币多局玩法与 3D 硬币交互...`），AI 不执行 git 写操作——验证：草稿经用户审阅后由用户执行
 
-### commit 草稿（V2 规范，2026-08-27 PL001）
-
-- [x] PL001 系列完成后草拟（2026-08-27 完成）：
-  - 标题：`feat: V0.1.0.0，幸运硬币选择丢硬币多局玩法与 3D 硬币交互`
-  - 正文：`- 模式互斥单选（三局两定/五局三定/自定义/一局定输赢），自定义数字滑动选择器 Y≤X 联动` / `- X局Y定收敛与加赛一局定生死` / `- 硬币三面 2 套主题，CSS3 3D 旋转，滑动加速超时自动落定` / `- 成绩与设置浮窗，终局重置`
-  - git add 清单（用户审阅后自行执行）：index.html package.json css/coin.css js/ config/ .temp/（verify**.js probe**.js run_all.py assert_lite.mjs）AGENTS.md README.md z.plan.md x.progress.md .gitignore .opencode/skills/
-  - 验证：用户审阅后自行 git add/commit/push（AI 不执行 git 写操作）
-
 ---
 
 ## A. 第1轮审计修复任务清单（依据 z.plan.md 附录 A001，2026-08-28）
@@ -139,20 +131,7 @@ node .temp/verify_pl007_ui.js     # PL007 UI：标题行 / 待机文案 / 比分
 #### A4 验证与收尾
 
 - [x] A4.1 全量回归 —— run_all 6/6（含 verify_a_fixes）+ probe 2 个 + verify_a_accept 5/5 + 冒烟 import 全模块 OK；验证：0 失败（2026-08-28）
-- [x] A4.2 commit 草稿 —— git add 清单 + message（feat: V0.1.0.1 含审计修复），见下方；验证：用户审阅
-
-### commit 草稿（V2 规范，2026-08-28 A 系列，版本 V0.1.0.2）
-
-- 标题：`fix: V0.1.0.2，首轮代码审计修复（定时器竞态/配置清理/交互优化/文档同步）`
-- 正文：
-  - `- 修复对局竞态：落定/停留/翻转定时器由重置统一清理，切换模式不再污染新局成绩与硬币状态`
-  - `- 移除 turns/flipMs 无效配置，清理无用 import 与样式变量，落定流程去掉多余过渡`
-  - `- 终局展示本局 seed，同一 seed 可复现整局结果（可解释可复现）`
-  - `- 自定义数字选择器吸附按实际宽度校准（窄屏不错位），拖动跟手不滞后`
-  - `- 启动失败错误条改为纯文本防注入；定数选择器补齐无障碍属性`
-  - `- 文档同步：README 与模块说明三面改双面，进度清单勾选修正，历史条目加注（审计报告见 z.plan 附录）`
-  - `- 版本推进 V0.1.0.2`
-- git add 清单（用户审阅后自行执行）：config/rules.json config/version.json css/coin.css index.html js/coin.js js/main.js js/rules.js js/ui.js README.md x.progress.md z.plan.md
+- [x] A4.2 commit 草稿 —— git add 清单 + message（feat: V0.1.0.1 含审计修复）；验证：用户审阅
 
 ---
 
@@ -220,20 +199,7 @@ node .temp/verify_pl007_ui.js     # PL007 UI：标题行 / 待机文案 / 比分
 #### PL003.7 验证与收尾
 
 - [x] PL003.7.a 无头探针 —— .temp/verify_pl003.js 断言 palette 结构/渐变层/动效曲线/斜纹角度；验证：node 39/39 PASS（2026-08-28）
-- [x] PL003.7.b 全量回归 + 目检 —— run_all 8/8 + 2 probe + verify_a_fixes 全绿 + 冒烟 OK（2026-08-28 已跑）；**浏览器目检通过（用户确认：金/银质感、旋转光影、落定 bounce、翻转手感、reduced-motion）**；版本推进 V0.1.0.3 四处同步，commit 草稿见下方
-
-### commit 草稿（V2 规范，2026-08-28 PL002+PL003，版本 V0.1.0.3）
-
-- git add 清单（10 文件）：
-  - `css/coin.css` `js/main.js` `js/rules.js` `js/ui.js` —— 立体化 + 拟物化实现
-  - `config/version.json` `README.md` —— 版本推进 V0.1.0.3
-  - `x.progress.md` `z.plan.md` `y.problem.md` —— 任务清单/方案/问题备忘
-- 标题：`feat: V0.1.0.3，硬币 3D 立体化与写实拟物（圆柱侧面/滚花齿环/金属材质/动效手感）`
-- 正文：
-  - `- 硬币 3D 圆柱侧面壁：真厚度 10px + 144 齿滚花与正面齿环一一对应`
-  - `- 面片写实金属质感：金/银五色材质光谱 + 倒角轮廓环 + 表面肌理 + emoji 浮雕`
-  - `- 接触阴影独立固定层（不随旋转）+ 落定 bounce + 翻转 overshoot + reduced-motion 快进`
-  - `- 版本推进 V0.1.0.3`
+- [x] PL003.7.b 全量回归 + 目检 —— run_all 8/8 + 2 probe + verify_a_fixes 全绿 + 冒烟 OK（2026-08-28 已跑）；**浏览器目检通过（用户确认：金/银质感、旋转光影、落定 bounce、翻转手感、reduced-motion）**；版本推进 V0.1.0.3 四处同步
 
 ---
 
@@ -259,21 +225,7 @@ node .temp/verify_pl007_ui.js     # PL007 UI：标题行 / 待机文案 / 比分
 #### PL004.4 验证与收尾
 
 - [x] PL004.4.a 无头探针 —— .temp/verify_pl004.js 断言 anya 主题结构/图片资源在位/img 分派/rim mask；验证：node 21/21 PASS（2026-08-28）
-- [x] PL004.4.b 全量回归 + 目检 —— run_all 9/9 + probe/verify_a_fixes 全绿 + 冒烟 OK（2026-08-28 已跑）；**浏览器目检通过（用户确认：anya 图叠加金属质感、rim 凸起与压线、交界线方位明暗与羽化）**；版本推进 V0.1.0.4 四处同步，commit 草稿见下方
-
-### commit 草稿（V2 规范，2026-08-28 PL004，版本 V0.1.0.4）
-
-- git add 清单（8 项）：
-  - `css/coin.css` `js/rules.js` `js/ui.js` —— anya 主题 + rim/junction 光影实现
-  - `assets/` —— anya 币面图片（yes/no/show，离线包内嵌）
-  - `config/version.json` `README.md` —— 版本推进 V0.1.0.4
-  - `x.progress.md` `z.plan.md` —— 任务清单/方案
-- 标题：`feat: V0.1.0.4，硬币图片币面与 rim 结构光影（anya 主题/凸起内环/交界线）`
-- 正文：
-  - `- 新增 anya 图片币面主题（assets/coins/anya 三图，按 faces 值类型图片分派接入）`
-  - `- rim 凸起内环 + 内缘压铸线 + 方位投影（左上光源/背光侧阴影，内圈投影带羽化）`
-  - `- 齿-rim 交界线：随方位明暗的黑线（高光减淡/背光加深）+ 羽化抗锯齿`
-  - `- 版本推进 V0.1.0.4`
+- [x] PL004.4.b 全量回归 + 目检 —— run_all 9/9 + probe/verify_a_fixes 全绿 + 冒烟 OK（2026-08-28 已跑）；**浏览器目检通过（用户确认：anya 图叠加金属质感、rim 凸起与压线、交界线方位明暗与羽化）**；版本推进 V0.1.0.4 四处同步
 
 ### PL005 任务清单（2026-08-28 币面图片凹凸浮雕）
 
@@ -282,19 +234,6 @@ node .temp/verify_pl007_ui.js     # PL007 UI：标题行 / 待机文案 / 比分
 - [x] PL005.3 verify_emboss.js 探针 —— 光源方位明暗/灰阶/色相保留/环境光/平坡一致；验证：run_all 10/10
 - [x] PL005.4 修复主题切换回调 box=null —— content 即 .theme-options，直接遍历子按钮；验证：浏览器点设置切换主题 OK（用户确认）
 - [x] PL005.5 目检定稿 —— 用户确认浮雕效果 OK；参数默认暂存 EMBOSS_DEFAULTS，外置 config 待定
-
-### commit 草稿（V2 规范，2026-08-28 PL005，版本 V0.1.0.5）
-
-- git add 清单（7 项）：
-  - `js/emboss.js` `js/ui.js` `js/main.js` —— 浮雕模块 + 接入 + 设置回调修复
-  - `config/version.json` `README.md` —— 版本推进 V0.1.0.5
-  - `x.progress.md` `z.plan.md` —— 任务清单/方案
-- 标题：`feat: V0.1.0.5，币面图片凹凸浮雕与主题切换修复（Canvas 预渲染浮雕/设置回调 null 修复）`
-- 正文：
-  - `- 新增 emboss.js 浮雕贴图模块：亮度高度场→梯度法线→光源点积，明暗叠回原色（slope/光源/环境光可调，同源缓存）`
-  - `- ui.js 图片币面接入浮雕（onload 预渲染 dataURL，失败降级原图）`
-  - `- 修复设置浮层主题切换回调 box=null 崩溃（content 即 .theme-options，直接遍历子按钮）`
-  - `- 版本推进 V0.1.0.5`
 
 ---
 
@@ -342,19 +281,46 @@ node .temp/verify_pl007_ui.js     # PL007 UI：标题行 / 待机文案 / 比分
 - [x] PL007.6.e 版本 V0.1.1.0 定版 —— 做法：config/version.json 单点改 V0.1.1.0，README 徽章/x.progress 版本行/z.plan PL007 状态行四处同步；验证：四处动态读取一致 + 四段式正则 V\d+\.\d+\.\d+\.\d+
 - [x] PL007.6.f commit 草稿 —— 做法：按 V2 规范草拟（git add 清单 + message `feat: V0.1.1.0，界面信息层补全与视觉收敛（标题行/比分进度/币面文字化/色收敛）`），AI 不执行 git 写操作；验证：用户审阅后自行执行
 
-### commit 草稿（V2 规范，2026-11-07 PL007，版本 V0.1.1.0）
+---
 
-- git add 清单（9 项）：
-  - `index.html` `css/coin.css` —— 标题行/比分条骨架与样式、结果强化、重置按钮墨色、桌面 480px 约束
-  - `js/ui.js` `js/main.js` `js/rules.js` —— 待机文案/比分渲染/去 emoji 化接线、多局第二轮 guiding 残留修复
-  - `config/version.json` `README.md` —— 版本推进 V0.1.1.0 与文档同步
-  - `x.progress.md` `z.plan.md` —— 任务清单/方案状态
-  - `AGENTS.md` `.gitignore` —— 本地技能与资产库记录、`.agents/` 忽略
-- 标题：`feat: V0.1.1.0，界面信息层补全与视觉收敛（标题行/比分进度/币面文字化/色收敛）`
-- 正文：
-  - `- 新增常驻标题行「幸运硬币」与副题，待机结果区显示模式说明（首屏 5 秒认知）`
-  - `- 新增比分进度条：金/银/空心圆点 + 先取 Y 局文案，加赛态明示，一局定输赢隐藏`
-  - `- 去 emoji 化：币面标记改「运 / YES / NO」冲压字，成绩改圆点+文字，设置改色点+名称`
-  - `- 结果揭晓 32px 弹入动画；重置按钮改墨色主操作；绿/粉降级语义色`
-  - `- 桌面 480px 居中约束；硬币材质渐变记录式 lint 豁免（属产品本体绘制非页面装饰）`
-  - `- 修复多局模式第二轮起 guiding 状态残留：每轮抛掷起点复位，恢复多圈旋转`
+## PL008. 单次投掷模式与持久化战绩任务清单（依据 z.plan.md PL008，2026-11-10）
+
+> 状态：✅ 已实施（V0.1.2.0，2026-11-10：verify_history 新增 + verify_game/rules/ui 重写调整，run_all 5/5 全绿；浏览器冒烟待用户确认）
+> 方案：z.plan.md PL008（删除多局模式、成绩改战绩、每次投掷记录日期时间+yes/no、localStorage 持久化、手动清零）
+> 拍板（2026-11-10）：按钮样式替换暂缓（后续整体 UI）；本 patch 只做删除/改名/战绩表
+> 硬限制：沿用 PL001——禁 WebGL/WASM/Workers/eval/外链 JS；依赖全内嵌；动效只动 transform/opacity；触区 ≥44px
+> 版本归属：V0.1.2.0（PL008.5 定版同步）
+
+#### PL008.1 删除多局玩法与模式 UI
+
+- [x] PL008.1.a index.html 删除模式区 —— 做法：移除 #mode-area 整块（三按钮 + #custom-picker/#slot-x/#slot-y）与 #score-progress 容器；验证：grep 断言 mode-area/custom-picker/score-progress 零残留 + collectRefs 骨架断言通过
+- [x] PL008.1.b game.js 简化单次投掷 —— 做法：删 resolveXY/checkFinished/needOvertime 与 toss 的局次派生；createGame 收敛为单次会话快照，toss 一次出 face（随机源仍走 random.js deriveSeed，seed 记录保留）；验证：verify_game 调整后断言单次投掷/同 seed 同结果
+- [x] PL008.1.c rules.js 删模式契约 —— 做法：删 MODES/DEFAULT_MODE/GAME_MIN_ROUNDS/GAME_MAX_ROUNDS/validateGameConfig；REQUIRED_KEYS 增 historyLimit/clearConfirmMs、删 defaultMode；THEMES 不动；验证：verify_rules 契约同步断言
+- [x] PL008.1.d ui.js 删模式渲染 —— 做法：删 nextModeState/yRangeFor/buildSlot/PICKER_MIN/MAX/cnDigit/renderScoreProgress/idleHintFor 多模式分支；collectRefs 移除 mode/slot/scoreProgress；验证：grep 零残留 + verify_pl007_ui 调整
+- [x] PL008.1.e main.js 删模式编排 —— 做法：删 applyModeUI/onModeChange/bindModeButtons/bindSlotDrag/offsetOf/custom 状态/比分接线；resetGame 收编为「重置硬币与结果区」（不再清战绩）；验证：冒烟 + grep 零残留
+- [x] PL008.1.f config/rules.json 与 css 清理 —— 做法：config 删 defaultMode、增 historyLimit(1000)/clearConfirmMs(3000)；css 删模式按钮/选择器/比分条规则；验证：verify_rules 加载真实 config + css 类名 grep 零残留
+
+#### PL008.2 战绩持久化内核（js/history.js 新增）
+
+- [x] PL008.2.a 纯函数内核 —— 做法：appendHistory(records, record, limit)（超限丢最旧）/parseHistory(json)（坏 JSON 返回空数组不崩溃）/serializeHistory(records)；验证：verify_history 追加/上限/坏 JSON/序列化往返断言
+- [x] PL008.2.b 存储包装 —— 做法：loadHistory(storage)/saveHistory(storage, records)/clearHistory(storage)，storage 注入便于 stub；键名 `fortune-choice.history.v1`；try/catch 宽容降级（localStorage 不可用时空数组不崩）；验证：verify_history stub storage 断言读写与降级
+- [x] PL008.2.c 接线 —— 做法：main.js settle 落定后 appendHistory({at: Date.now(), face}) + saveHistory；初始化 loadHistory 供战绩浮窗读取；验证：冒烟投掷后刷新记录仍在
+
+#### PL008.3 战绩浮窗 UI
+
+- [x] PL008.3.a 改名与列表渲染 —— 做法：底部按钮「成绩」→「战绩」、浮窗标题「本轮成绩」→「战绩」；ui.js renderHistoryList(el, records) 倒序渲染（同日 `11-10 13:00`，跨年 `2025-12-31 23:59`）+ 复用 .score-dot 金/银圆点 + YES/NO；空态「暂无战绩」；验证：verify_pl007_ui 战绩渲染断言（格式/倒序/空态）
+- [x] PL008.3.b 清零入口与二次确认 —— 做法：战绩浮窗内「清除全部战绩」按钮，首按变「再按一次确认」，clearConfirmMs 内未再按恢复；执行后 clearHistory + 列表空态；不用原生 confirm；验证：冒烟二次确认流程 + verify_history 清零断言
+
+#### PL008.4 文案与文档同步
+
+- [x] PL008.4.a 待机文案简化 —— 做法：结果区待机改「左右滑动 · 抛硬币」；验证：verify_pl007_ui 文案断言更新
+- [x] PL008.4.b README/AGENTS 同步 —— 做法：删除多局玩法描述（三局两定/五局三定/自定义/加赛），战绩持久化与手动清零说明入特性与使用说明；验证：文档与实况比对
+- [x] PL008.4.c z.plan 状态 —— 做法：PL008 状态行改已实施并注明版本；验证：与提交范围一致
+
+#### PL008.5 验证收尾与版本定版
+
+- [x] PL008.5.a verify_history.js 新增 —— 做法：.temp/ 纯函数 + stub storage 断言组；验证：node 直跑 0 失败并纳入 run_all
+- [x] PL008.5.b 既有 verify 调整 —— 做法：verify_rules（删模式断言/新增配置键）/verify_game（单次投掷）/verify_pl007_ui（删比分/模式断言、增战绩断言）同步；验证：run_all 全量 0 失败
+- [x] PL008.5.c 冒烟与目检 —— 做法：浏览器全链路（投掷→战绩记录→刷新仍在→清零二次确认→再投掷继续记录）；验证：用户目检确认
+- [x] PL008.5.d 版本 V0.1.2.0 定版 —— 做法：config/version.json 单点改 V0.1.2.0（第三位推进 1），README 徽章/x.progress 版本行/z.plan PL008 状态行四处同步；验证：四处动态读取一致 + 四段式正则
+- [x] PL008.5.e commit 草稿 —— 做法：按 V2 规范在对话中给出（git add 清单 + message），不写入本文档；验证：用户审阅后自行执行

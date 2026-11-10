@@ -1,30 +1,12 @@
 // ============================================================
-// 幸运硬币选择 - 对局规则契约（config/rules.json 的守门人）
-// 设计要点：模式枚举/局数契约/主题在代码内显式声明（P23 契约定案），
-// 滑动动画参数必填键导入装配期 fail-fast 中文报错；可选键宽容回落。
-// 关联配置：config/rules.json 是本文件契约的数据镜像（PL001.2）。
+// 幸运硬币选择 - 规则契约（config/rules.json 的守门人）
+// 设计要点：主题在代码内显式声明（P23 契约定案）；滑动/动画/战绩参数必填键
+// 导入装配期 fail-fast 中文报错；PL008 删除多局模式后不再有模式/局数契约。
+// 关联配置：config/rules.json 是本文件契约的数据镜像。
 // ============================================================
 
-// 模式枚举：对局形态的单一权威声明（冻结，禁运行时改）
-// 语义：one-shot 一局定输赢 / three-two 三局两定 / five-three 五局三定 /
-//       custom 自定义 X局Y定
-export const MODES = Object.freeze({
-  ONESHOT: "one-shot",
-  THREETWO: "three-two",
-  FIVETHREE: "five-three",
-  CUSTOM: "custom",
-});
-
-// 默认模式：一局定输赢（无按钮按下的默认态）
-export const DEFAULT_MODE = MODES.ONESHOT;
-
-// 局数范围：自定义 X局Y定 的 X 允许区间（[2,9]，1 局无多局意义）
-export const GAME_MIN_ROUNDS = 2;
-export const GAME_MAX_ROUNDS = 9;
-
-// 滑动/动画参数必填键：缺一即契约失败（对局动画成立的核心参数）
+// 滑动/动画/战绩参数必填键：缺一即契约失败
 export const REQUIRED_KEYS = [
-  "defaultMode",
   "idleTimeoutMs",
   "accelFactor",
   "decelDurationMs",
@@ -34,6 +16,8 @@ export const REQUIRED_KEYS = [
   "guideSpeedFactor",
   "resultHoldMs",
   "resetFlipMs",
+  "historyLimit",
+  "clearConfirmMs",
 ];
 
 // 主题定义：3 套（gold/silver 文字标记 + anya 图片币面，PL007.3 去 emoji 化）
@@ -101,28 +85,10 @@ function toNumber(value, label) {
   return num;
 }
 
-// 校验并规范化局数契约：X∈[2,9] 整数、Y∈[2,X] 整数且 Y≤X
-// 输入：{ x, y }（局数/定数）；输出：规范化 { x, y }
-// 异常：越界/非整数/Y>X/入参非法 → 中文 fail-fast（错误消息带具体值定位）
-export function validateGameConfig({ x, y } = {}) {
-  if (typeof x !== "number" || typeof y !== "number") {
-    throw new Error(`局数契约 x/y 必须是数字，收到：x=${x}, y=${y}`);
-  }
-  if (!Number.isInteger(x) || x < GAME_MIN_ROUNDS || x > GAME_MAX_ROUNDS) {
-    throw new Error(
-      `局数 x 必须在 [${GAME_MIN_ROUNDS}, ${GAME_MAX_ROUNDS}] 整数，收到：${x}`,
-    );
-  }
-  if (!Number.isInteger(y) || y < 2 || y > x) {
-    throw new Error(`定数 y 必须在 [2, ${x}] 整数（Y≤X），收到：${y}`);
-  }
-  return { x, y };
-}
-
-// 校验并规范化规则配置：必填拦截 + 值域口径 + 模式枚举白名单
+// 校验并规范化规则配置：必填拦截 + 值域口径（PL008：无模式/局数契约）
 // 输入：raw 装配层 JSON.parse 后的规则对象
-// 输出：规范化对象 { defaultMode, idleTimeoutMs, accelFactor, decelDurationMs, ...结果面停留/翻转, configVersion }
-// 异常：非对象 / 缺必填键 / defaultMode 不在 MODES / 数值越界 → 中文 fail-fast
+// 输出：规范化对象（滑动/动画/战绩参数 + configVersion）
+// 异常：非对象 / 缺必填键 / 数值越界 → 中文 fail-fast
 export function validateRules(raw) {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
     throw new Error(`规则配置必须是对象，收到类型：${typeof raw}`);
@@ -131,13 +97,6 @@ export function validateRules(raw) {
     if (!(key in raw) || raw[key] === undefined || raw[key] === null) {
       throw new Error(`规则配置缺少必填键「${key}」，请检查 config/rules.json`);
     }
-  }
-
-  const defaultMode = String(raw.defaultMode);
-  if (!Object.values(MODES).includes(defaultMode)) {
-    throw new Error(
-      `defaultMode 必须是模式枚举值之一（${Object.values(MODES).join("/")}），收到：${raw.defaultMode}`,
-    );
   }
 
   const idleTimeoutMs = toNumber(raw.idleTimeoutMs, "idleTimeoutMs ");
@@ -209,8 +168,21 @@ export function validateRules(raw) {
     );
   }
 
+  const historyLimit = toNumber(raw.historyLimit, "historyLimit ");
+  if (!Number.isInteger(historyLimit) || historyLimit <= 0) {
+    throw new Error(
+      `historyLimit 必须是正整数（战绩上限条数），收到：${raw.historyLimit}`,
+    );
+  }
+
+  const clearConfirmMs = toNumber(raw.clearConfirmMs, "clearConfirmMs ");
+  if (!Number.isInteger(clearConfirmMs) || clearConfirmMs <= 0) {
+    throw new Error(
+      `clearConfirmMs 必须是正整数（清零二次确认窗口毫秒），收到：${raw.clearConfirmMs}`,
+    );
+  }
+
   return {
-    defaultMode,
     idleTimeoutMs,
     accelFactor,
     decelDurationMs,
@@ -220,6 +192,8 @@ export function validateRules(raw) {
     guideSpeedFactor,
     resultHoldMs,
     resetFlipMs,
+    historyLimit,
+    clearConfirmMs,
     configVersion:
       raw.configVersion === undefined ? null : String(raw.configVersion),
   };
@@ -227,19 +201,15 @@ export function validateRules(raw) {
 
 // ===== js/rules.js 模块说明 =====
 // 常量与函数清单：
-// - MODES：模式枚举冻结（one-shot/three-two/five-three/custom）
-// - DEFAULT_MODE：默认一局定输赢
-// - GAME_MIN_ROUNDS / GAME_MAX_ROUNDS：自定义局数 X 范围 [2,9]
-// - REQUIRED_KEYS：rules 结构必填键单一声明处（滑动/动画参数）
-// - THEMES：3 套主题（gold/silver 文字标记「运/YES/NO」+ anya 图片路径，PL007.3），
+// - REQUIRED_KEYS：rules 结构必填键单一声明处（动画 + 战绩参数）
+// - THEMES：3 套主题（gold/silver 文字标记「运/YES/NO」+ anya 图片路径），
 //   每套 name/faces{show,yes,no}/color/palette 五色
 // - DEFAULT_THEME：默认主题 gold
 // - toNumber(value, label)：弹性解析内核（数字直用/字符串 trim 转换/其余拒绝）
-// - validateGameConfig({x,y})：局数契约——X∈[2,9]、Y∈[2,X] 整数、Y≤X
-// - validateRules(raw)：装配期校验 config/rules.json——必填键/模式白名单/数值口径
-// 设计理由：模式与局数语义在代码内显式声明（P23 契约定案，不外置），
-//   滑动动画参数为可调参数外置 config/rules.json 由本文件守门；
+// - validateRules(raw)：装配期校验 config/rules.json——必填键/数值口径
+// 设计理由：主题与动画参数在代码内显式声明（P23 契约定案，不外置）；
+//   PL008 删除多局模式后移除 MODES/局数契约，只保留单次投掷所需参数；
 //   校验在启动装配期一次完成（运行时零 IO 零重验）
 // 异常处理：全部中文 fail-fast 带键名/值定位；规则残缺宁可明确拒绝启动
-// 关联配置：config/rules.json（PL001.2）；消费方 main.js 装配期调用一次，
-//   规范化产物分发 game（defaultMode/局数）、coin 动画（滑动/减速参数）、ui（主题）
+// 关联配置：config/rules.json；消费方 main.js 装配期调用一次，
+//   规范化产物分发 game（seed）、coin 动画（滑动/减速参数）、ui（主题）、history（上限）

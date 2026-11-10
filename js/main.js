@@ -1,17 +1,23 @@
 // ============================================================
-// 幸运硬币选择 - 启动装配与对局编排
-// 设计要点：装配层是唯一业务容器——加载配置 → 创建对局 →
-// 驱动 game（toss/setStatus）与 coin（tick/finalFace）配合动画表现；
-// 结果先由 toss 计算，动画只是落点表现不弄虚作假；
+// 幸运硬币选择 - 启动装配与投掷编排（PL008 单次投掷）
+// 设计要点：装配层是唯一业务容器——加载配置 → 装配 UI → 驱动
+// game（toss/setStatus）与 coin（tick/guidedStep）配合动画表现；
+// 结果先由 toss 计算，动画只是落点表现不弄虚作假；每次落定即记录战绩
+// （日期时间 + yes/no，localStorage 持久化，不自动清零）。
 // 错误入口统一提示不崩溃（降级不中断，错误策略主线）。
-// 关联配置：config/rules.json、config/version.json。
+// 关联配置：config/rules.json、config/version.json；关联模块 js/history.js。
 // ============================================================
 
-import { validateRules, MODES, THEMES, DEFAULT_THEME } from "./rules.js";
+import { validateRules, THEMES, DEFAULT_THEME } from "./rules.js";
 import { createGame, toss, setStatus, STATUS } from "./game.js";
 import { tick, guidedStep } from "./coin.js";
+import {
+  loadHistory,
+  saveHistory,
+  clearHistory,
+  appendHistory,
+} from "./history.js";
 import * as ui from "./ui.js";
-import { idleHintFor, renderIdleHint, renderScoreProgress } from "./ui.js";
 
 // 解析配置 JSON 文本（装配层唯一解析入口）
 // 输入：text JSON 字符串、label 配置名（用于错误定位）；输出：解析对象
@@ -51,30 +57,26 @@ export async function bootstrap() {
   return { rules, version };
 }
 
-// 生成对局 seed（MVP：随机生成，可复现性由结果快照记录）
+// 生成投掷 seed（随机生成；同 seed 可复现单次结果）
 function makeSeed() {
   return `coin-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 }
 
-// 对局编排上下文（单例，由 init 创建）
+// 投掷编排上下文（单例，由 init 创建）
 function createCtx(rules, version) {
   return {
     rules,
     version,
     game: null,
     theme: DEFAULT_THEME,
-    mode: rules.defaultMode,
-    custom: { x: 3, y: 2 },
-    slotX: null,
-    slotY: null,
-    score: [],
+    history: [],
+    storage: null,
     velocity: 0,
     angle: 0,
     pending: null,
     settling: false,
     guiding: false,
     idleTimer: null,
-    settleId: null,
     holdId: null,
     flipId: null,
     rafId: null,
@@ -82,39 +84,30 @@ function createCtx(rules, version) {
   };
 }
 
-// 重置整轮对局（终局后/换模式时调用）
-// 输入：ctx 编排上下文；输出：无
+// 重置硬币与结果区（不触碰战绩记录）：清理定时器、硬币归位、展示面恢复
+// 输入：ctx 编排上下文、refs；输出：无
 function resetGame(ctx, refs) {
-  // 清理残留定时器：防旧局落定/停留/翻转回调污染新局（切换模式/重置时触发）
+  // 清理残留定时器：防旧落定/停留/翻转回调污染新一轮
   clearTimeout(ctx.idleTimer);
-  clearTimeout(ctx.settleId);
   clearTimeout(ctx.holdId);
   clearTimeout(ctx.flipId);
   ctx.idleTimer = null;
-  ctx.settleId = null;
   ctx.holdId = null;
   ctx.flipId = null;
-  ctx.game = createGame(
-    { mode: ctx.mode, x: ctx.custom.x, y: ctx.custom.y },
-    makeSeed(),
-  );
+  ctx.game = createGame(makeSeed());
   ctx.pending = null;
   ctx.settling = false;
   ctx.guiding = false;
   ctx.velocity = 0;
   ctx.angle = 0;
-  ctx.score = [];
   ui.setCoinAngle(refs.coin, 0);
   // 壁色/齿环色随主题（PL002）：renderCoinTheme 设面与壁色，随后覆盖两面为展示面
   ui.renderCoinTheme(refs, THEMES[ctx.theme]);
   // 初始/重置无结果，双面均为展示面
   ui.setCoinShowFace(refs, THEMES[ctx.theme], "yes");
   ui.setCoinShowFace(refs, THEMES[ctx.theme], "no");
-  // 待机引导（PL007.1b）：结果区显示模式说明；比分复位（one-shot 自动隐藏，PL007.2）
-  renderIdleHint(refs.roundResult, idleHintFor(ctx.mode, ctx.custom));
-  renderScoreProgress(refs.scoreProgress, ctx.game);
-  ui.renderProgress(refs.progress, "");
-  ui.showReset(refs.resetBtn, false);
+  // 待机引导（PL008）：结果区小字提示，落定结果覆盖
+  ui.renderIdleHint(refs.roundResult, "左右滑动 · 抛硬币");
 }
 
 // 动画主循环：自由衰减推进旋转，减速后期切换到落点引导（速度与剩余角成正比，
@@ -188,23 +181,18 @@ function bounce(refs) {
   refs.coinScene.classList.add("coin-landed");
 }
 
-// 滑动触发：叠加旋转速度、重置超时计时；首次滑动先 toss 定本局结果
+// 滑动触发：叠加旋转速度、重置超时计时；首次滑动先 toss 定本次结果
 // 输入：ctx、refs、deltaX 本次滑动位移；输出：无
 function onSwipe(ctx, refs, deltaX) {
-  // 落定展示期间忽略滑动，避免打断落定动画/重复记分
+  // 落定展示期间忽略滑动，避免打断落定动画/重复记录
   if (ctx.settling) return;
-  // 仅当没有进行中的本局且已终局才拦截（终局后禁止再抛新局）
-  if (!ctx.pending && ctx.game.finished) return;
   // 横向位移不足（含纯垂直滑动）不视为抛硬币手势，避免误触出结果
   if (Math.abs(deltaX) < ctx.rules.swipeThreshold) return;
   if (!ctx.pending) {
-    const g = toss(ctx.game);
-    ctx.game = g;
-    ctx.pending = {
-      face: g.results[g.results.length - 1],
-      finished: g.finished,
-      decision: g.decision,
-    };
+    // 每次投掷独立快照（新 seed），toss 一次即出结果（PL008）
+    ctx.game = createGame(makeSeed());
+    ctx.game = toss(ctx.game);
+    ctx.pending = { face: ctx.game.lastFace };
     // 新一轮抛掷复位引导锁：上一轮落定后 guiding 残留 true 会让本轮跳过
     // 自由衰减直接进入落点引导，导致只能微幅旋转一个翻面就落定
     ctx.guiding = false;
@@ -237,43 +225,28 @@ function onSwipe(ctx, refs, deltaX) {
   }, ctx.rules.idleTimeoutMs);
 }
 
-// 落定：展示结果，终局出重置按钮并暴露 seed（可复现）；非终局停留结果面后翻转回展示面。
-// 引导已使 angle 精确等于目标结果面（无角度差），此处不再做对齐过渡。
-// 定时器句柄存 ctx（holdId/flipId），由 resetGame 统一清理防竞态污染新局。
+// 落定：展示本次结果（大字弹入）+ 记录战绩（日期时间 + yes/no）；
+// 结果面停留 resultHoldMs 后翻转回展示面，供下一次投掷。
+// 定时器句柄存 ctx（holdId/flipId），由 resetGame 统一清理防竞态。
 // 输入：ctx、refs；输出：无
 function settle(ctx, refs) {
   if (!ctx.pending) return;
   ctx.settling = true;
   const resultFace = ctx.pending.face;
-  const finished = ctx.pending.finished;
   const faceText = resultFace === "yes" ? "YES" : "NO";
-  const round = ctx.game.currentRound;
   ctx.pending = null;
 
-  if (finished) {
-    ctx.settling = false;
-    ctx.score.push({ round, face: ctx.game.decision });
-    // 比分定格终局形态（PL007.2）：满色点 + 决胜文案保留
-    renderScoreProgress(refs.scoreProgress, ctx.game);
-    ui.renderRoundResult(
-      refs.roundResult,
-      `最终答案：${ctx.game.decision.toUpperCase()}！`,
-      true,
-    );
-    // 暴露本局 seed：同一 seed 可复现整局结果
-    ui.renderProgress(refs.progress, `seed: ${ctx.game.seed}`);
-    ui.showReset(refs.resetBtn, true);
-    return;
-  }
+  // 结果展示（PL007.4b：32px 戏剧字号 + 弹入）
+  ui.renderRoundResult(refs.roundResult, faceText);
+  // 战绩记录（PL008）：追加置顶 + 持久化（存储异常静默降级为会话内）
+  ctx.history = appendHistory(
+    ctx.history,
+    { at: Date.now(), face: resultFace },
+    ctx.rules.historyLimit,
+  );
+  saveHistory(ctx.storage, ctx.history);
 
-  ctx.score.push({
-    round,
-    face: ctx.game.results[ctx.game.results.length - 1],
-  });
-  // 比分更新（PL007.2）：落定后立即呈现当前 yes/no 计数与剩余局
-  renderScoreProgress(refs.scoreProgress, ctx.game);
-  ui.renderRoundResult(refs.roundResult, `第${round}局：${faceText}`);
-  // 结果面停留 resultHoldMs，让用户看清本局结果，再慢速转回展示面
+  // 结果面停留后翻转回展示面（下一次投掷）
   ctx.holdId = setTimeout(() => {
     // 只把背面（翻转后将朝前的那面）换成展示面：当前朝前的结果面保持结果，
     // 翻转过程 = 结果面翻走、展示面翻来，翻转结束硬币本体即展示面
@@ -293,89 +266,9 @@ function settle(ctx, refs) {
   }, ctx.rules.resultHoldMs);
 }
 
-// 更新模式按钮与自定义选择器显隐（互斥状态机）
-// 输入：ctx、refs；输出：无
-function applyModeUI(ctx, refs) {
-  for (const btn of refs.modeButtons.querySelectorAll(".mode-btn")) {
-    btn.classList.toggle("active", btn.dataset.mode === ctx.mode);
-  }
-  const isCustom = ctx.mode === MODES.CUSTOM;
-  refs.picker.classList.toggle("hidden", !isCustom);
-}
-
-// 切换对局模式：互斥 + 取消，无按钮 = 一局定输赢
-// 输入：ctx、refs、target 模式；输出：无
-function onModeChange(ctx, refs, target) {
-  ctx.mode = ui.nextModeState(ctx.mode, target);
-  applyModeUI(ctx, refs);
-  resetGame(ctx, refs);
-}
-
-// 模式按钮绑定（事件委托）
-// 输入：ctx、refs；输出：无
-function bindModeButtons(ctx, refs) {
-  refs.modeButtons.addEventListener("click", (e) => {
-    const btn = e.target.closest(".mode-btn");
-    if (btn) onModeChange(ctx, refs, btn.dataset.mode);
-  });
-}
-
-// 自定义选择器拖动：上下两槽共用拖动逻辑，吸附后回调联动
-// 输入：ctx、refs、slotEl、handle、onChange；输出：无
-function bindSlotDrag(ctx, refs, slotEl, handle, onChange) {
-  let dragging = false;
-  let startX = 0;
-  let baseOffset = 0;
-  const offset = () => {
-    const m = handle.track.style.transform.match(/translateX\((-?[\d.]+)px\)/);
-    return m ? parseFloat(m[1]) : 0;
-  };
-  slotEl.addEventListener("pointerdown", (e) => {
-    dragging = true;
-    startX = e.clientX;
-    baseOffset = offset();
-    slotEl.setPointerCapture(e.pointerId);
-  });
-  slotEl.addEventListener("pointermove", (e) => {
-    if (!dragging) return;
-    handle.setOffset(baseOffset + (e.clientX - startX));
-  });
-  const up = () => {
-    if (!dragging) return;
-    dragging = false;
-    const idx = handle.snapFromOffset(offset());
-    handle.setIndex(idx);
-    onChange(handle.getValue());
-  };
-  slotEl.addEventListener("pointerup", up);
-  slotEl.addEventListener("pointercancel", up);
-}
-
-// 绑定所有 UI 交互
+// 绑定所有 UI 交互（硬币滑动 / 战绩 / 换硬币）
 // 输入：ctx、refs；输出：无
 function bindUI(ctx, refs) {
-  bindModeButtons(ctx, refs);
-
-  ctx.slotX = ui.buildSlot(refs.slotX);
-  ctx.slotY = ui.buildSlot(refs.slotY);
-  ctx.slotX.setIndex(ctx.custom.x - ui.PICKER_MIN);
-  ctx.slotY.setIndex(ctx.custom.y - ui.PICKER_MIN);
-  bindSlotDrag(ctx, refs, refs.slotX, ctx.slotX, (x) => {
-    ctx.custom.x = x;
-    const { lo, hi } = ui.yRangeFor(x);
-    const disabled = new Set();
-    for (let v = ui.PICKER_MIN; v <= ui.PICKER_MAX; v++) {
-      if (v < lo || v > hi) disabled.add(v - ui.PICKER_MIN);
-    }
-    ctx.slotY.setIndex(ctx.slotY.snapFromOffset(offsetOf(ctx.slotY)), disabled);
-    if (ctx.custom.y > x) ctx.custom.y = x;
-    if (ctx.mode === MODES.CUSTOM) resetGame(ctx, refs);
-  });
-  bindSlotDrag(ctx, refs, refs.slotY, ctx.slotY, (y) => {
-    ctx.custom.y = y;
-    if (ctx.mode === MODES.CUSTOM) resetGame(ctx, refs);
-  });
-
   // 硬币滑动：pointer 事件，位移换算旋转速度
   let swiping = false;
   let swipeX = 0;
@@ -396,14 +289,25 @@ function bindUI(ctx, refs) {
     swiping = false;
   });
 
-  refs.scoreBtn.addEventListener("click", () => {
+  // 战绩浮层（PL008）：打开时按当前记录渲染；清除按钮二次确认
+  refs.historyBtn.addEventListener("click", () => {
     if (!refs.overlay.hidden) {
       ui.hideOverlay(refs.overlay);
       return;
     }
-    const content = ui.buildScoreContent(ctx.score);
-    ui.showOverlayCard(refs.overlay, "本轮成绩", content);
+    const content = ui.buildHistoryContent(
+      ctx.history,
+      () => {
+        ctx.history = [];
+        clearHistory(ctx.storage);
+        return ctx.history;
+      },
+      ctx.rules.clearConfirmMs,
+    );
+    ui.showOverlayCard(refs.overlay, "战绩", content);
   });
+
+  // 换硬币浮层（主题切换）
   refs.settingsBtn.addEventListener("click", () => {
     if (!refs.overlay.hidden) {
       ui.hideOverlay(refs.overlay);
@@ -419,18 +323,9 @@ function bindUI(ctx, refs) {
     });
     ui.showOverlayCard(refs.overlay, "更换硬币", content);
   });
-  refs.resetBtn.addEventListener("click", () => {
-    resetGame(ctx, refs);
-  });
 }
 
-// 选择器轨道当前位移（辅助联动）
-function offsetOf(handle) {
-  const m = handle.track.style.transform.match(/translateX\((-?[\d.]+)px\)/);
-  return m ? parseFloat(m[1]) : 0;
-}
-
-// 启动入口：加载配置 → 装配 UI → 创建对局
+// 启动入口：加载配置 → 装入战绩 → 装配 UI
 // 输入：无；输出：Promise
 // 异常：配置/骨架任一失败 → 页面提示区展示中文错误，不崩溃
 export async function init() {
@@ -440,7 +335,9 @@ export async function init() {
     const refs = ui.collectRefs();
     ctx = createCtx(rules, version);
     ctx.refs = refs;
-    applyModeUI(ctx, refs);
+    // 战绩持久化（PL008）：localStorage 不可用时降级为会话内记录
+    ctx.storage = typeof localStorage !== "undefined" ? localStorage : null;
+    ctx.history = loadHistory(ctx.storage);
     resetGame(ctx, refs);
     // 硬币立体化（PL002）：读 :root 变量构建圆柱侧面壁（分段数/厚度/半径）
     const cs = getComputedStyle(document.documentElement);
@@ -463,7 +360,7 @@ export async function init() {
 }
 
 // 浏览器环境启动装配（node 无头 import 时不启动，避免 fetch/DOM 依赖）
-// 输入：无；输出：无（启动后由 DOM 事件驱动对局）
+// 输入：无；输出：无（启动后由 DOM 事件驱动投掷）
 if (typeof window !== "undefined" && typeof document !== "undefined") {
   init();
 }
@@ -471,22 +368,18 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
 // ===== js/main.js 模块说明 =====
 // 函数清单与逻辑：
 // - parseConfig/loadJson/bootstrap：配置加载契约（装配层唯一 IO 入口）
-// - makeSeed()：生成对局 seed（随机，结果快照记录）
-// - createCtx(rules, version)：对局编排上下文（单例容器，含定时器句柄）
-// - resetGame(ctx, refs)：整轮重置（清理定时器防竞态、归零对局/硬币状态）
+// - makeSeed()：生成投掷 seed（随机，结果可复现）
+// - createCtx(rules, version)：投掷编排上下文（含战绩数组与 storage 注入）
+// - resetGame(ctx, refs)：重置硬币与结果区（清理定时器；不触碰战绩）
 // - frame(ctx, refs, now)：动画主循环——自由衰减 + 落点引导 guidedStep 精确落定
 // - prefersReducedMotion()：系统减少动效偏好探测（PL003，reduced 时快进落定）
-// - bounce(refs)：落定冲击（PL003，coin 外层 scale 0.97→1 弹回，纯表现不动 rotateY）
-// - onSwipe(ctx, refs, deltaX)：滑动加速 + 首次 toss 定本局结果 + 重置超时计时
-// - settle(ctx, refs)：落定——展示结果、终局暴露 seed 与重置按钮；非终局停留后翻转回展示面
-// - applyModeUI/onModeChange/bindModeButtons：模式互斥与按钮绑定
-// - bindSlotDrag：选择器拖动吸附与联动回调
-// - bindUI(ctx, refs)：全部交互绑定（模式/选择器/硬币滑动/成绩/设置/重置）
-// - offsetOf(handle)：选择器轨道当前位移
+// - bounce(refs)：落定冲击（PL003，coin 外层 scale 0.97→1 弹回）
+// - onSwipe(ctx, refs, deltaX)：滑动加速 + 首次 toss 定结果 + 重置超时计时
+// - settle(ctx, refs)：落定——展示结果、记录战绩（置顶 + 持久化）、停留后翻转回展示面
+// - bindUI(ctx, refs)：交互绑定（硬币滑动 / 战绩浮层 / 换硬币浮层）
 // - init()：启动装配入口
-// 设计理由：业务决策收拢装配层（参考项目同款），核心层纯函数零 IO；
-//   结果先由 toss 计算、动画 guidedStep 精确落定（不弄虚作假、无角度差）；
-//   落定/停留/翻转定时器句柄入 ctx，由 resetGame 统一清理防竞态污染；
-//   错误入口统一页面提示不崩溃（降级不中断）
-// 异常处理：配置加载/骨架缺失/模式非法 fail-fast 中文提示；运行期交互零崩溃
-// 关联配置：config/rules.json、config/version.json、rules.js/game.js/coin.js/ui.js
+// 设计理由：业务决策收拢装配层，核心层纯函数零 IO；结果先由 toss 计算、
+//   动画 guidedStep 精确落定（不弄虚作假、无角度差）；PL008 删除多局编排后
+//   每次落定即记录战绩并持久化，刷新/重开不丢；存储异常降级为会话内记录
+// 异常处理：配置加载/骨架缺失/契约失败 fail-fast 中文提示；运行期交互零崩溃
+// 关联配置：config/rules.json、config/version.json、rules.js/game.js/coin.js/ui.js/history.js

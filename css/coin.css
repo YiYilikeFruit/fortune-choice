@@ -87,124 +87,6 @@ body {
   color: var(--text-dim);
 }
 
-/* ---------- 顶部模式区 ---------- */
-#mode-area {
-  flex: 0 0 auto;
-}
-
-#mode-buttons {
-  display: flex;
-  gap: 8px;
-}
-
-.mode-btn {
-  flex: 1;
-  min-height: var(--touch-min);
-  border: 1px solid var(--surface-2);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text-dim);
-  font-size: 15px;
-  font-weight: 600;
-  transition:
-    transform 150ms cubic-bezier(0.2, 0, 0, 1),
-    background 150ms ease,
-    color 150ms ease;
-}
-
-.mode-btn:active {
-  transform: scale(0.96);
-}
-
-.mode-btn.active {
-  background: var(--accent);
-  color: #201a10;
-  border-color: var(--accent);
-  transform: scale(1.04);
-}
-
-.mode-btn.active:active {
-  transform: scale(0.98);
-}
-
-/* ---------- 自定义数字滑动选择器 ---------- */
-.picker {
-  margin-top: 10px;
-}
-
-.picker-slots {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.slot {
-  position: relative;
-  flex: 1;
-  height: 52px;
-  overflow: hidden;
-  border-radius: 12px;
-  background: var(--surface);
-  border: 1px solid var(--surface-2);
-  touch-action: none;
-  cursor: grab;
-}
-
-.slot-track {
-  position: absolute;
-  left: 0;
-  top: 0;
-  display: flex;
-  will-change: transform;
-  transition: transform 220ms cubic-bezier(0.2, 0.9, 0.3, 1);
-}
-
-.slot-item {
-  width: var(--touch-min);
-  height: 52px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  color: var(--text-dim);
-  transition:
-    transform 160ms ease,
-    color 160ms ease,
-    opacity 160ms ease;
-}
-
-.slot-item.selected {
-  color: var(--accent);
-  font-size: 30px;
-  font-weight: 800;
-  transform: scale(1.05);
-}
-
-.slot-item.disabled {
-  opacity: 0.25;
-}
-
-/* 选中高亮带（上中下三条细线） */
-.slot::after {
-  content: "";
-  position: absolute;
-  left: 8%;
-  right: 8%;
-  top: 50%;
-  height: 52px;
-  transform: translateY(-50%);
-  border-top: 2px solid rgba(255, 209, 102, 0.35);
-  border-bottom: 2px solid rgba(255, 209, 102, 0.35);
-  pointer-events: none;
-  z-index: 1;
-}
-
-.picker-label {
-  font-size: 16px;
-  color: var(--text-dim);
-  flex: 0 0 auto;
-}
-
 /* ---------- 硬币区 ---------- */
 #coin-stage {
   flex: 1;
@@ -580,50 +462,6 @@ body {
     var(--coin-edge, #b8903a);
 }
 
-/* ---------- 比分进度条（PL007.2） ---------- */
-#score-progress {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  min-height: 28px;
-  padding: 2px 0;
-}
-
-.sp-dots {
-  display: flex;
-  gap: 6px;
-}
-
-.sp-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--surface-2);
-  box-sizing: border-box;
-}
-
-/* yes 金实点 / no 银实点 / 剩余空心（底色圆 + 深描边区分） */
-.sp-dot.dot-yes {
-  background: var(--accent);
-}
-
-.sp-dot.dot-no {
-  background: var(--text-dim);
-}
-
-.sp-dot.dot-empty {
-  background: transparent;
-  border: 1.5px solid var(--surface-2);
-}
-
-.sp-label {
-  font-size: 12px;
-  color: var(--text-dim);
-  letter-spacing: 0.02em;
-}
-
 /* ---------- 结果展示区 ---------- */
 #result-area {
   flex: 0 0 auto;
@@ -669,29 +507,6 @@ body {
     transform: scale(1);
     opacity: 1;
   }
-}
-
-#progress {
-  font-size: 13px;
-  color: var(--text-dim);
-}
-
-/* 重置按钮墨色（PL007.4a）：深色页上的 inverted 主操作（浅墨底深字），
-   绿色从按钮退役降级语义色 */
-#reset-btn {
-  min-height: var(--touch-min);
-  padding: 0 28px;
-  border: none;
-  border-radius: var(--radius);
-  background: var(--text);
-  color: #1c1e2e;
-  font-size: 16px;
-  font-weight: 700;
-  transition: transform 150ms cubic-bezier(0.2, 0, 0, 1);
-}
-
-#reset-btn:active {
-  transform: scale(0.96);
 }
 
 /* ---------- 底部功能区 ---------- */
@@ -767,33 +582,50 @@ body {
   margin-bottom: 10px;
 }
 
-.score-list {
+/* ---------- 战绩列表（PL008） ---------- */
+.history-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.history-list {
   list-style: none;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 40vh;
+  overflow-y: auto;
 }
 
-.score-list li {
-  min-width: 56px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: var(--surface-2);
-  text-align: center;
+.history-list li {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: 14px;
 }
 
-.score-list li .no {
-  display: block;
-  font-size: 11px;
+.history-time {
+  flex: 1;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.history-empty {
+  justify-content: center;
   color: var(--text-dim);
 }
 
-/* 成绩圆点（PL007.3b）：yes 金 / no 银，替代 emoji */
+.history-list .result-face {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* 战绩圆点（PL007.3b 沿用）：yes 金 / no 银，替代 emoji */
 .score-dot {
   width: 8px;
   height: 8px;
@@ -809,10 +641,27 @@ body {
   background: var(--text-dim);
 }
 
-.score-list li .result-face {
-  display: block;
+/* 清除战绩按钮（PL008）：平时弱化，armed 态警示色（二次确认窗口） */
+.history-clear {
+  width: 100%;
+  min-height: var(--touch-min);
+  border: 1px solid var(--surface-2);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-dim);
   font-size: 14px;
-  font-weight: 700;
+  transition:
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.history-clear:active {
+  transform: scale(0.97);
+}
+
+.history-clear.armed {
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 .theme-options {
@@ -896,12 +745,6 @@ body {
 @media (max-width: 380px) {
   :root {
     --coin-size: min(60vw, 200px);
-  }
-  .slot-item {
-    width: 40px;
-  }
-  .mode-btn {
-    font-size: 14px;
   }
 }
 

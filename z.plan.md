@@ -333,6 +333,53 @@ fortune-choice/
 
 ---
 
+## PL008. 单次投掷模式与持久化战绩（2026-11-10 定案）
+
+> 来源：用户需求（2026-11-10：多局模式不再需要，删除模式按钮；「成绩」改「战绩」；记录每次投掷的日期时间与结果；不再自动清零，仅手动清零；按钮样式后续整体 UI 统一处理）
+> 状态：✅ 已实施（V0.1.2.0，2026-11-10：模式/比分/重置按钮删除，战绩持久化与清零落地，run_all 5/5；任务清单见 x.progress.md）
+
+### 背景
+
+- 现有多局玩法（三局两定/五局三定/自定义 X局Y定/加赛）经用户判定不再需要——决策只需单次 yes/no，多局反而增加认知与操作负担
+- 「成绩」仅为会话内记录（`ctx.score` 内存数组），刷新即丢；用户要求持久化战绩：每次投掷记录日期、时间（如 13:00）与 yes/no
+- 战绩不再自动清零（跨会话保留），仅提供手动清零入口
+- 下方按钮（战绩/换硬币）呆板问题已调查（kinetics Push button/Keycap press 等纯 CSS 配方为候选），**本方案不实施按钮替换**，归入后续整体 UI 处理
+
+### 决策结论（2026-11-10 与用户确认）
+
+1. **删除模式选择**：整块移除三局两定/五局三定/自定义按钮与自定义数字选择器；每次投掷即一次独立决策（保留"一局定输赢"语义），无"局/定/加赛"概念
+2. **「成绩」→「战绩」**：按钮与浮窗标题均改名
+3. **战绩记录结构**：每次投掷一条 `{ at: 毫秒时间戳, face: "yes" | "no" }`；列表渲染为「日期 时间 + YES/NO」（同日显示 `11-10 13:00`，跨年带年份 `2025-12-31 23:59`；时间用 24 小时制零填充）
+4. **持久化**：localStorage 单键存储（键名 `fortune-choice.history.v1`），刷新/重开 WebView 不丢；**不自动清零**；容量上限 1000 条（超出丢弃最旧，避免无界增长）
+5. **排序**：最新在上（倒序），零配置
+6. **清零**：战绩浮窗内「清除全部战绩」按钮 + 页内二次确认（首按变"再按一次确认"，3s 未再按恢复原状；不用原生 confirm，避免 WebView 拦截弹窗）
+7. **删除比分进度条**：无多局语义后 PL007.2 的圆点比分条整体移除（含 index.html 容器、ui.js renderScoreProgress、main.js 接线、css 样式）
+8. **待机文案简化**：结果区待机显示「左右滑动 · 抛硬币」（无模式说明）
+9. **按钮样式替换暂缓**：本 patch 不动按钮视觉，仅改文案与结构；kinetics 候选（Push button / Keycap press / Squish + history/refresh-ccw 图标）留待整体 UI 方案
+10. **版本**：V0.1.2.0（第三位推进 1）
+
+### 设计要点
+
+- **删除面（index.html）**：移除 `#mode-area` 整块（含 `#mode-buttons`、`#custom-picker`、`#slot-x/#slot-y`）与 `#score-progress`；底部按钮文字「成绩」→「战绩」
+- **简化面（js/game.js）**：删除多局内核——`resolveXY`/`checkFinished`/`needOvertime`/`toss` 的局次派生与加赛逻辑；保留 `createGame` 简化为单次会话快照（status + 最近结果），toss 一次即出 face（随机源仍走 random.js deriveSeed，可复现 seed 记录保留）；删除局数契约相关
+- **简化面（js/rules.js）**：删除 `MODES`/`DEFAULT_MODE`/`GAME_MIN_ROUNDS`/`GAME_MAX_ROUNDS`/`validateGameConfig`；`REQUIRED_KEYS` 保留动画参数（idleTimeoutMs/accelFactor/decelDurationMs/swipeThreshold/guide*/resultHoldMs/resetFlipMs）；THEMES 不动
+- **简化面（js/ui.js）**：删除 `nextModeState`/`yRangeFor`/`buildSlot`/`PICKER_MIN/MAX`/`cnDigit`/`renderScoreProgress`/`idleHintFor` 多模式分支；新增 `renderHistoryList(el, records)`（纯渲染，空态「暂无战绩」）；`collectRefs` 移除 mode/slot 节点、保留 titleBar
+- **简化面（js/main.js）**：删除 `applyModeUI`/`onModeChange`/`bindModeButtons`/`bindSlotDrag`/`offsetOf`/自定义 x/y 状态/比分接线；`resetGame` 收编为「重置硬币与结果区」（不再重置战绩）；投掷落定后 `history.append({at: Date.now(), face})` 并持久化
+- **新模块（js/history.js）**：战绩持久化内核——`appendHistory(records, record, limit)`/`parseHistory(json)`/`serializeHistory(records)` 纯函数（node 可测）+ `loadHistory(storage)`/`saveHistory(storage, records)`/`clearHistory(storage)` 存储包装（storage 注入，便于 stub）；异常宽容：坏 JSON 返回空数组不崩溃（错误策略主线）
+- **配置（config/rules.json）**：删除 `defaultMode`；`historyLimit`（1000）/`clearConfirmMs`（3000）作为可调参数入 config 与 REQUIRED_KEYS
+- **样式（css/coin.css）**：删除模式按钮/选择器/比分条相关规则；新增战绩列表样式（时间列 + 圆点 + YES/NO，复用 PL007.3 的 `.score-dot`）；战绩浮窗滚动上限沿用 `.overlay-card` max-height
+- **约束核查**：localStorage 为平台允许能力（README 能力边界）；纯前端零新增依赖；无 WebGL/Worker/eval；动效仍只动 transform/opacity
+- **涉及文件**：index.html、css/coin.css、js/game.js、js/rules.js、js/ui.js、js/main.js、js/history.js（新增）、config/rules.json、.temp/verify_rules.js、.temp/verify_game.js（调整）、.temp/verify_history.js（新增）、README.md、AGENTS.md、文档
+- **不涉及**：js/random.js（派生随机源复用）、js/coin.js（动画内核不变）、js/emboss.js、assets/
+
+### 关联
+
+- 版本：V0.1.2.0（2026-11-10 随 PL008 提交推进）
+- 验证：.temp/verify_history.js（新增：追加/上限丢弃/坏 JSON 宽容/序列化往返/清零）+ verify_rules 契约同步（删模式断言、增 historyLimit/clearConfirmMs）+ verify_game 调整（单次投掷/seed 可复现）+ verify_pl007_ui 调整（删模式与比分断言、增战绩渲染断言）+ run_all 全量 + 浏览器冒烟（投掷→战绩记录→刷新仍在→清零二次确认）
+- 后续（不在本 patch）：按钮样式替换（kinetics 配方 + 图标），整体 UI 统一处理
+
+---
+
 ## 附录 A001：全量代码审计报告（第1轮，2026-08-28）
 
 > 范围：根级文档（AGENTS.md/README.md/z.plan.md/x.progress.md）+ index.html + js/_.js + css/coin.css + config/_.json；未审 .temp/.reference/.git

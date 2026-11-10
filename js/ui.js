@@ -1,40 +1,12 @@
 // ============================================================
 // 幸运硬币选择 - 渲染层（DOM 构建与刷新，只读不改业务状态）
-// 设计要点：模式互斥/定数联动/中文数字为纯函数（无头可测）；
+// 设计要点：战绩时间格式化/列表渲染为纯函数（无头可测）；
 // collectRefs 收拢骨架元素引用；业务决策留在装配层（main.js）。
-// 关联配置：rules.js 主题/模式；coin.js 双面角。
+// 关联配置：rules.js 主题；coin.js 双面角；history 记录结构（PL008）。
 // ============================================================
 
 import { THEMES, DEFAULT_THEME } from "./rules.js";
 import { embossImage } from "./emboss.js";
-
-// 中文数字：索引 0 = 一，对应数字 1
-export const CN_DIGITS = ["一", "二", "三", "四", "五", "六", "七", "八", "九"];
-
-// 自定义模式局数可选范围：[2, 9]
-export const PICKER_MIN = 2;
-export const PICKER_MAX = 9;
-
-// 数字 → 中文显示
-// 输入：n 数字 1-9；输出：中文数字字符串
-export function cnDigit(n) {
-  return CN_DIGITS[n - 1] ?? String(n);
-}
-
-// 模式互斥状态机（纯函数）：再按已选中取消，切换选中
-// 输入：current 当前选中模式（null 或 MODES 值）、target 点击的模式
-// 输出：新选中模式（null 表示无按钮按下 = 一局定输赢）
-export function nextModeState(current, target) {
-  return current === target ? null : target;
-}
-
-// 自定义定数可用范围联动（纯函数）：X 选定时，Y ∈ [PICKER_MIN, x]
-// 输入：x 局数；输出：{ lo, hi }
-export function yRangeFor(x) {
-  const lo = PICKER_MIN;
-  const hi = Math.max(lo, Math.min(PICKER_MAX, x));
-  return { lo, hi };
-}
 
 // 收集页面骨架关键元素引用（main.js 启动时调用一次）
 // 输入：doc 文档对象（默认全局 document，便于无头 stub 测缺失路径）
@@ -45,19 +17,12 @@ export function collectRefs(doc = document) {
   // 骨架必填节点（按真实 id 报告缺失，便于对照 index.html）
   const REQUIRED_IDS = [
     "title-bar",
-    "mode-buttons",
-    "custom-picker",
-    "slot-x",
-    "slot-y",
     "swipe-hint",
     "coin-stage",
     "coin-scene",
     "coin",
     "round-result",
-    "score-progress",
-    "progress",
-    "reset-btn",
-    "score-btn",
+    "history-btn",
     "settings-btn",
     "overlay",
     "toast",
@@ -70,10 +35,6 @@ export function collectRefs(doc = document) {
   const coin = byId("coin");
   const refs = {
     titleBar: byId("title-bar"),
-    modeButtons: byId("mode-buttons"),
-    picker: byId("custom-picker"),
-    slotX: byId("slot-x"),
-    slotY: byId("slot-y"),
     swipeHint: byId("swipe-hint"),
     coinStage: byId("coin-stage"),
     coinScene: byId("coin-scene"),
@@ -83,10 +44,7 @@ export function collectRefs(doc = document) {
       no: coin ? coin.querySelector(".face-no") : null,
     },
     roundResult: byId("round-result"),
-    scoreProgress: byId("score-progress"),
-    progress: byId("progress"),
-    resetBtn: byId("reset-btn"),
-    scoreBtn: byId("score-btn"),
+    historyBtn: byId("history-btn"),
     settingsBtn: byId("settings-btn"),
     overlay: byId("overlay"),
     toast: byId("toast"),
@@ -102,71 +60,6 @@ export function collectRefs(doc = document) {
     }
   }
   return refs;
-}
-
-// 构建单个滑动选择器（slot 内的数字条）
-// 输入：slotEl 容器、values 可选数字数组（默认 1-9）；输出：选择器句柄 { setIndex, getValue, setDisabled }
-// 行为：构建 .slot-track 内 9 个 .slot-item，滚动吸附由句柄方法驱动（事件绑定在 bindUI）
-export function buildSlot(slotEl) {
-  const track = document.createElement("div");
-  track.className = "slot-track";
-  slotEl.appendChild(track);
-  const items = [];
-  for (let i = PICKER_MIN; i <= PICKER_MAX; i++) {
-    const item = document.createElement("div");
-    item.className = "slot-item";
-    item.dataset.value = String(i);
-    item.textContent = cnDigit(i);
-    track.appendChild(item);
-    items.push(item);
-  }
-
-  // 吸附步长与真实 item 宽度同源（CSS 窄屏断点会改宽，硬编码 44 会错位）
-  const itemW = items[0].offsetWidth || 44;
-
-  const centerOffset = () => (slotEl.clientWidth - itemW) / 2;
-
-  // 设置选中索引（0 基，对应数字 PICKER_MIN+i），联动 track 位移
-  const setIndex = (idx, selectedMap = null) => {
-    track.style.transition = "";
-    const clamped = Math.max(0, Math.min(items.length - 1, idx));
-    track.style.transform = `translateX(${centerOffset() - clamped * itemW}px)`;
-    items.forEach((item, i) => {
-      const selected = i === clamped;
-      item.classList.toggle("selected", selected);
-      const disabled = selectedMap ? !selectedMap.has(i) : false;
-      item.classList.toggle("disabled", disabled);
-    });
-    return clamped;
-  };
-
-  // 以 translateX 像素偏移驱动轨道（拖动中）：禁过渡保证跟手不滞后
-  const setOffset = (px) => {
-    track.style.transition = "none";
-    track.style.transform = `translateX(${px}px)`;
-  };
-
-  // 由当前轨道位移吸附出最近索引
-  const snapFromOffset = (px) => {
-    const target = centerOffset() - px;
-    const idx = Math.round(target / itemW);
-    return Math.max(0, Math.min(items.length - 1, idx));
-  };
-
-  return {
-    track,
-    itemW,
-    items,
-    setIndex,
-    setOffset,
-    snapFromOffset,
-    getValue: () =>
-      PICKER_MIN +
-      snapFromOffset(
-        parseFloat(track.style.transform.replace(/[^0-9.-]/g, "")) ||
-          centerOffset(),
-      ),
-  };
 }
 
 // 颜色加深/减淡：hex → rgb 按系数缩放（齿环暗色等派生色用）
@@ -218,9 +111,10 @@ export function buildCoinEdge(coinEl, n, radius, thick, doc = document) {
   }
   return segs;
 }
+
 // 构建币面固定层（PL004）：face 内按序创建内容标记容器 .coin-face-mark、
 // 金属光泽 .coin-shine、内 rim .coin-rim（仅一次，之后只更新标记内容，保证层序稳定）
-// 输入：faceEl 面元素；输出：mark 容器（图片/emoji 放其中）
+// 输入：faceEl 面元素；输出：mark 容器（文字/图片放其中）
 function _ensureFaceLayers(faceEl) {
   let mark = faceEl.querySelector(".coin-face-mark");
   if (!mark) {
@@ -243,10 +137,10 @@ function _ensureFaceLayers(faceEl) {
   return mark;
 }
 
-// 设置硬币面标记（PL004）：清空标记容器后按 faces 值类型分派——
+// 设置硬币面标记（PL004/PL007）：清空标记容器后按 faces 值类型分派——
 // 图片路径（.png/.jpg/.jpeg/.webp）→ img.coin-face-img（PL005 浮雕化）；
-// emoji → span.face-mark
-// 输入：faceEl 面元素、text emoji 或图片路径；输出：无（层序由 _ensureFaceLayers 保证）
+// 文字标记 → span.face-mark（单字符放大）
+// 输入：faceEl 面元素、text 文字或图片路径；输出：无（层序由 _ensureFaceLayers 保证）
 function _setFaceMark(faceEl, text) {
   const mark = _ensureFaceLayers(faceEl);
   mark.textContent = "";
@@ -279,7 +173,8 @@ function _setFaceMark(faceEl, text) {
     mark.appendChild(span);
   }
 }
-// 渲染硬币主题：双面 emoji + 展示面 + 材质 palette（面片/倒角/齿环取色）+ 侧面壁色
+
+// 渲染硬币主题：双面文字标记 + 材质 palette（面片/倒角/齿环取色）+ 侧面壁色
 // 输入：refs（含 faces.yes/no、coin）、theme 主题对象；输出：无
 // 说明（PL003）：palette 五色写入 #coin 容器（子面片继承），金暖银冷光谱
 export function renderCoinTheme(refs, theme) {
@@ -313,24 +208,7 @@ export function setCoinAngle(coinEl, angle) {
   coinEl.style.transform = `rotateY(${angle}deg)`;
 }
 
-// 待机引导文案生成（PL007.1b，纯函数）：按模式与局数契约推导模式说明
-// 输入：mode 模式枚举值、{x, y} 局数契约（custom 用）；输出：说明文案字符串
-export function idleHintFor(mode, { x, y } = {}) {
-  switch (mode) {
-    case "one-shot":
-      return "抛一次 · 立刻定";
-    case "three-two":
-      return "三局两定 · 先取 2 局获胜";
-    case "five-three":
-      return "五局三定 · 先取 3 局获胜";
-    case "custom":
-      return `${x} 局 ${y} 定 · 先取 ${y} 局获胜`;
-    default:
-      return "";
-  }
-}
-
-// 渲染待机引导（PL007.1b）：模式说明弱化显示（idle 态小字），落定结果覆盖
+// 渲染待机引导（PL008 文案）：小字弱化显示，落定结果覆盖
 // 输入：el 结果文字元素、text 文案；输出：无
 export function renderIdleHint(el, text) {
   el.textContent = text;
@@ -338,7 +216,7 @@ export function renderIdleHint(el, text) {
   el.classList.add("idle");
 }
 
-// 渲染单局/终局结果文字（PL007.4b：落定弹入动画，reduced-motion 由 CSS 关闭）
+// 渲染投掷结果文字（PL007.4b：落定弹入动画，reduced-motion 由 CSS 关闭）
 // 输入：el、text、isFinal；输出：无
 export function renderRoundResult(el, text, isFinal = false) {
   el.textContent = text;
@@ -349,45 +227,84 @@ export function renderRoundResult(el, text, isFinal = false) {
   el.classList.add("pop");
 }
 
-// 渲染比分进度条（PL007.2）：yes 金实点 / no 银实点 / 剩余空心 + 先取 Y 局文案；
-// 加赛未终局替换文案为"加赛 · 一局定胜负"；one-shot 整体隐藏（无多局语义）
-// 输入：el 比分容器、game 对局快照（x/y/results/overtime/finished/mode）；输出：无
-export function renderScoreProgress(el, game) {
-  if (game.mode === "one-shot") {
-    el.classList.add("hidden");
+// 战绩时间格式化（PL008，纯函数）：同年 MM-DD HH:mm，跨年 YYYY-MM-DD HH:mm
+// 输入：at 毫秒时间戳、now 参照时间（默认当前）；输出：格式化字符串（24 小时制零填充）
+export function formatHistoryTime(at, now = Date.now()) {
+  const d = new Date(at);
+  const n = new Date(now);
+  const pad = (v) => String(v).padStart(2, "0");
+  const date =
+    d.getFullYear() === n.getFullYear()
+      ? `${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+      : `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return `${date} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// 渲染战绩列表（PL008，纯渲染）：时间 + 金/银圆点 + YES/NO；空态「暂无战绩」
+// 输入：el 列表容器（ul）、records 记录数组（最新在上）、now 参照时间；输出：无
+export function renderHistoryList(el, records, now = Date.now()) {
+  el.textContent = "";
+  if (records.length === 0) {
+    const empty = document.createElement("li");
+    empty.className = "history-empty";
+    empty.textContent = "暂无战绩";
+    el.appendChild(empty);
     return;
   }
-  el.classList.remove("hidden");
-  el.textContent = "";
-  const dots = document.createElement("div");
-  dots.className = "sp-dots";
-  for (const face of game.results) {
+  for (const item of records) {
+    const li = document.createElement("li");
+    const time = document.createElement("span");
+    time.className = "history-time";
+    time.textContent = formatHistoryTime(item.at, now);
     const dot = document.createElement("span");
-    dot.className = `sp-dot ${face === "yes" ? "dot-yes" : "dot-no"}`;
-    dots.appendChild(dot);
+    dot.className =
+      item.face === "yes" ? "score-dot dot-yes" : "score-dot dot-no";
+    const face = document.createElement("span");
+    face.className = "result-face";
+    face.textContent = item.face === "yes" ? "YES" : "NO";
+    li.append(time, dot, face);
+    el.appendChild(li);
   }
-  for (let i = game.results.length; i < game.x; i++) {
-    const dot = document.createElement("span");
-    dot.className = "sp-dot dot-empty";
-    dots.appendChild(dot);
-  }
-  const label = document.createElement("span");
-  label.className = "sp-label";
-  label.textContent =
-    game.overtime && !game.finished
-      ? "加赛 · 一局定胜负"
-      : `先取 ${game.y} 局获胜`;
-  el.append(dots, label);
 }
 
-// 渲染进度指示
-export function renderProgress(el, text) {
-  el.textContent = text;
-}
+// 构建战绩浮层内容（PL008）：列表 + 清除按钮（二次确认；confirmMs 内未再按恢复）
+// 输入：records 记录数组、onClear 清零回调（返回剩余记录）、confirmMs 确认窗口；输出：内容节点
+export function buildHistoryContent(records, onClear, confirmMs = 3000) {
+  const box = document.createElement("div");
+  box.className = "history-box";
+  const list = document.createElement("ul");
+  list.className = "history-list";
+  renderHistoryList(list, records);
+  box.appendChild(list);
 
-// 显示/隐藏重置按钮（仅终局出现）
-export function showReset(el, show) {
-  el.classList.toggle("hidden", !show);
+  const clearBtn = document.createElement("button");
+  clearBtn.type = "button";
+  clearBtn.className = "history-clear";
+  clearBtn.textContent = "清除全部战绩";
+  let armed = false;
+  let timer = null;
+  const disarm = () => {
+    armed = false;
+    clearTimeout(timer);
+    timer = null;
+    clearBtn.classList.remove("armed");
+    clearBtn.textContent = "清除全部战绩";
+  };
+  clearBtn.addEventListener("click", () => {
+    if (!armed) {
+      armed = true;
+      clearBtn.classList.add("armed");
+      clearBtn.textContent = "再按一次确认";
+      clearTimeout(timer);
+      timer = setTimeout(disarm, confirmMs);
+      return;
+    }
+    disarm();
+    const remaining = onClear();
+    renderHistoryList(list, Array.isArray(remaining) ? remaining : []);
+  });
+  box.appendChild(clearBtn);
+  return box;
 }
 
 // 构建浮层卡片内容并显示
@@ -426,35 +343,6 @@ export function showToast(toast, text) {
   }, 1800);
 }
 
-// 构建成绩浮层内容：本轮全部局结果列表（会话内）
-// 输入：score 数组（[{round, face}]）；输出：内容节点
-export function buildScoreContent(score) {
-  const list = document.createElement("ul");
-  list.className = "score-list";
-  if (score.length === 0) {
-    const li = document.createElement("li");
-    li.textContent = "暂无记录";
-    list.appendChild(li);
-  } else {
-    for (const item of score) {
-      const li = document.createElement("li");
-      const no = document.createElement("span");
-      no.className = "no";
-      no.textContent = `第${item.round}局`;
-      // 去 emoji 化（PL007.3b）：金/银圆点 + YES/NO 文字，跨机型渲染一致
-      const dot = document.createElement("span");
-      dot.className =
-        item.face === "yes" ? "score-dot dot-yes" : "score-dot dot-no";
-      const face = document.createElement("span");
-      face.className = "result-face";
-      face.textContent = item.face === "yes" ? "YES" : "NO";
-      li.append(no, dot, face);
-      list.appendChild(li);
-    }
-  }
-  return list;
-}
-
 // 构建设置浮层内容：硬币主题切换（PL007.3：色点 + 名称，零 emoji）
 // 输入：currentTheme 当前主题名、onChange 回调；输出：内容节点
 export function buildSettingsContent(currentTheme, onChange) {
@@ -480,24 +368,19 @@ export function buildSettingsContent(currentTheme, onChange) {
 }
 
 // ===== js/ui.js 模块说明 =====
-// 常量与函数清单：
-// - CN_DIGITS：中文数字表；PICKER_MIN/MAX：自定义局数范围 [2,9]
-// - cnDigit(n)：数字→中文；nextModeState(current,target)：模式互斥状态机（纯函数）
-// - yRangeFor(x)：定数可用范围联动（纯函数）
-// - collectRefs(doc)：骨架元素引用收集（含 title-bar/score-progress，PL007），缺失 fail-fast
-// - buildSlot(slotEl)：构建滑动选择器，返回轨道/吸附/取值句柄
+// 函数清单：
+// - collectRefs(doc)：骨架元素引用收集（含 title-bar/history-btn），缺失 fail-fast
 // - buildCoinEdge(coinEl,n,radius,thick)：构建圆柱侧面壁（PL002，写 --seg-arc）
 // - shadeHex(hex,factor)：派生加深色（齿环暗色等，PL002）
 // - _setFaceMark(faceEl,text)：面标记分派（文字→span / 图片路径→img，PL004/PL007）
 // - renderCoinTheme / setCoinShowFace / setCoinAngle：硬币渲染（palette 写变量，PL003）
-// - idleHintFor(mode,{x,y})：待机模式说明文案生成（纯函数，PL007.1b）
 // - renderIdleHint / renderRoundResult：待机引导弱化显示 / 结果文字落定弹入（PL007.4b）
-// - renderScoreProgress(el,game)：比分进度条（金/银/空心圆点+文案，加赛态，PL007.2）
-// - renderProgress / showReset：进度指示 / 重置按钮显隐
+// - formatHistoryTime(at,now)：战绩时间格式化（同年 MM-DD HH:mm / 跨年带年份，纯函数）
+// - renderHistoryList(el,records,now)：战绩列表渲染（时间 + 圆点 + YES/NO，空态）
+// - buildHistoryContent(records,onClear,confirmMs)：战绩浮层内容（清除按钮二次确认）
 // - showOverlayCard / hideOverlay / showToast：浮层与提示
-// - buildScoreContent / buildSettingsContent：成绩（圆点+文字，PL007.3b）/设置（色点+名称，PL007.3）浮层内容
+// - buildSettingsContent：设置浮层内容（色点 + 名称，PL007.3）
 // 设计理由：渲染层只画快照不改业务状态（装配层 main.js 是唯一业务容器）；
-//   纯函数内核（模式互斥/定数联动/待机文案）无头可测，DOM 表现层由浏览器冒烟覆盖；
-//   去 emoji 化后跨机型渲染一致（系统 emoji 字体不再参与视觉）
+//   时间格式化/列表渲染纯函数无头可测；PL008 删除多局后移除模式/选择器/比分渲染
 // 异常处理：collectRefs 骨架缺失 fail-fast；其余渲染路径零异常不中断
-// 关联配置：rules.js THEMES/DEFAULT_THEME、coin.js 双面角；消费方 main.js
+// 关联配置：rules.js THEMES/DEFAULT_THEME、coin.js 双面角、history 记录结构；消费方 main.js
