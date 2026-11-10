@@ -376,7 +376,52 @@ fortune-choice/
 
 - 版本：V0.1.2.0（2026-11-10 随 PL008 提交推进）
 - 验证：.temp/verify_history.js（新增：追加/上限丢弃/坏 JSON 宽容/序列化往返/清零）+ verify_rules 契约同步（删模式断言、增 historyLimit/clearConfirmMs）+ verify_game 调整（单次投掷/seed 可复现）+ verify_pl007_ui 调整（删模式与比分断言、增战绩渲染断言）+ run_all 全量 + 浏览器冒烟（投掷→战绩记录→刷新仍在→清零二次确认）
-- 后续（不在本 patch）：按钮样式替换（kinetics 配方 + 图标），整体 UI 统一处理
+- 后续（不在本方案）：按钮样式替换（kinetics 配方 + 图标），整体 UI 统一处理
+
+---
+
+## PL009. 四季主题框架与界面重构（2026-11-10 定案）
+
+> 来源：用户需求（2026-11-10：按 design/prototype.html v2 搭框架；先生成 4 张背景图，猫咪用 SVG 占位；美术资产后续统一落地；以设计稿为标准但不必完全一致）
+> 状态：✅ 已实施（V0.1.3.0，2026-11-10：四季主题/4 张背景/猫咪 SVG 占位/结果丝带/主题与战绩浮窗落地；run_all 6/6；任务清单见 x.progress.md）
+
+### 背景
+
+- 现有界面为夜色单主题（PL007 后的深色 + 贴纸元素），设计稿 v2 已定为四季贴纸治愈风（奶油底、粗圆描边、季节背景、双猫陪伴）
+- 美术资产未落地：4 张背景图可先生成；猫咪先用内联 SVG 占位（待风格定稿后统一生成位图）
+- 保留：现有 3D 硬币实现（用户明确不动）、单次投掷与持久化战绩（PL008 成果）
+- 设计稿：design/prototype.html v2（440×956 基准，四季切换、结果态、浮窗演示齐全）
+
+### 决策结论（2026-11-10 与用户确认）
+
+1. **按设计稿 v2 重构布局**：440×956 逻辑基准，弹性适配 375–440；标题 334×108、硬币 240、猫咪 140、提示 350×48、按钮 163×76
+2. **四季主题系统**：CSS 变量 + `data-season`；季节判断 3-5 春 / 6-8 夏 / 9-11 秋 / 12-2 冬
+3. **主题模式**：默认**自动跟随季节**；手动选择切 `manual` 并持久化；浮窗开关可切回 `auto`；存储键 `fortune-choice.theme.v1`（宽容降级为会话内）
+4. **背景**：先生成 **4 张**（春/夏/秋/冬），生图 9:21 → 裁 9:19.5 → 880×1912 @2x WebP；背景不含猫咪与文字，中央留干净区（硬币/猫咪叠前景）
+5. **猫咪 SVG 占位**：小黑（德文奶牛母猫）/ 小白（德文纯白公猫）内联 SVG 待机姿态；欢呼用 CSS 类；探头占位（浮窗顶部）；后续替换位图时接口不变
+6. **结果态**：YES/NO 丝带横幅 + 彩纸屑（5 片）+ 猫咪欢呼；待机与结果互斥切换
+7. **浮窗**：战绩（粉色标题胶囊、硬币头像列表、二次确认清零、关闭）；换主题（2×2 场景占位卡、自动开关、当前季节、关闭）
+8. **硬币**：保留现有 3D 实现（PL002-004 材质不动）；贴纸风统一留后续主题化阶段
+9. **不做**：猫咪位图素材、主题缩略图位图、硬币美术改版、按钮动效配方替换（kinetics 后续）
+10. **版本**：V0.1.3.0（第三位推进 1）
+
+### 设计要点
+
+- **主题常量（js/rules.js）**：`SEASONS`（spring/summer/autumn/winter）、`SEASON_THEMES`（每季配色/装饰/文案）、`seasonOf(date)` 纯函数（月份→季节）；`config/rules.json` 新增 `themeAutoDefault`（可调参数，默认 true）
+- **主题状态（js/main.js）**：启动读取持久化（auto/manual）；`mode=auto` 时按当前月份取季节；手动选择→manual 并保存；浮窗开关切回 auto 并保存；storage 异常降级会话内
+- **结构（index.html）**：背景层（`bg-<season>@2x` 用 CSS 背景图）、标题胶囊（含季节装饰 SVG）、硬币舞台、猫咪 SVG 占位（相对舞台定位：猫顶与硬币顶齐平）、提示胶囊、结果丝带、底部按钮（战绩粉/换主题绿）、两个浮窗
+- **样式（css/coin.css）**：四季变量（`--bg/--card/--accent/--btn-theme/--deco-*`）；贴纸组件（描边 2.5px、圆角、硬阴影）；丝带（CSS + 燕尾 clip-path）；彩纸屑（CSS 动画）；浮窗（滑入 200ms）；保留硬币材质体系与 reduced-motion
+- **动效规格（落定四层）**：硬币 bounce 150ms（已有）→ 丝带 pop 320ms `cubic-bezier(0.34,1.56,0.64,1)` → 猫咪欢呼 420ms → 彩纸屑 900ms；全部只动 transform/opacity；reduced-motion 关闭花瓣/猫咪浮动/丝带 pop/彩纸屑
+- **动效触发**：结果态切换用 class 重排（移除→reflow→添加）保证可重复播放
+- **约束核查**：纯 HTML/CSS/JS 零依赖；WebView Chromium ≥93；localStorage 可用；无 WebGL/Worker/eval；背景图为离线包内资源
+- **涉及文件**：index.html、css/coin.css、js/rules.js、js/main.js、js/ui.js、config/rules.json、assets/ui/bg-spring|summer|autumn|winter@2x.webp、.temp/verify_theme.js（新增）、.temp/verify_pl008_ui.js（调整）
+- **不涉及**：js/coin.js（动画内核）、js/game.js（投掷内核）、js/history.js（战绩持久化）、js/random.js、js/emboss.js
+
+### 关联
+
+- 版本：V0.1.3.0（2026-11-10 随 PL009 提交推进）
+- 验证：.temp/verify_theme.js（季节判断/主题模式/持久化宽容降级）+ verify_pl008_ui 调整（新结构/丝带/猫占位/浮窗/主题变量断言）+ verify_rules（themeAutoDefault 契约）+ run_all 全量 + 浏览器目检（四季切换/投掷/战绩/浮窗/动效）+ taste-skill inspect 复测（贴纸风豁免项记录）
+- 后续（不在本方案）：猫咪位图 6 张、主题缩略图 4 张、硬币美术统一、按钮动效配方（kinetics）
 
 ---
 

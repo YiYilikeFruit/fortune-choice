@@ -1,0 +1,2144 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>幸运硬币 · UI 设计稿（440×956）</title>
+    <style>
+      /* ============================================================
+         幸运硬币 · UI 设计稿 v2（按 AI 设计稿实测构图重排）
+         基准：440 × 956 逻辑像素（iPhone 18 Pro Max @3x = 1320×2868）
+         构图依据（读图实测）：
+         - 猫咪在硬币左右两侧、与硬币中部齐平（春图为硬币上方，作为特例保留在题材里）
+         - 猫咪身高 ≈ 屏高 22%（≈210pt），带名字标签（小黑 ♀ / 小白 ♂）
+         - 硬币 ≈ 屏宽 55%（240pt），屏幕中部
+         - 标题 ≈ 屏宽 76%（334pt）、高 ≈ 120pt，含季节装饰
+         - 提示胶囊 ≈ 屏宽 80%（350pt）、高 48pt
+         - 底部按钮 ≈ 163×76，战绩粉 / 换主题绿
+         - 结果态：YES/NO 丝带横幅 + 彩纸屑 + 猫咪欢呼
+         - 浮窗：猫咪探头 + 品牌行 + 粉色标题胶囊
+         响应式：猫咪相对硬币舞台定位（不用固定 bottom），375 档等比缩小
+         ============================================================ */
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      :root {
+        --ink: #6b4a3a;
+        --stroke: 2.5px;
+        --radius-card: 22px;
+        --radius-pill: 999px;
+        --font: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+        --safe-top: 44px;
+        --safe-bottom: 34px;
+        /* 尺寸变量（375 档在 media query 里缩小） */
+        --w-title: 334px;
+        --w-coin: 240px;
+        --w-cat: 140px;
+        --w-hint: 350px;
+        --w-btn: 163px;
+        --h-btn: 76px;
+      }
+
+      /* ---------- 四季主题（主界面配色，取自 AI 设计稿） ---------- */
+      .screen[data-season="spring"] {
+        --bg: #f7c9d8;
+        --bg-deep: #cfe3a8;
+        --card: #fff8ec;
+        --card-2: #ffeef2;
+        --accent: #f6b8cc;
+        --accent-2: #f5c242;
+        --btn-theme: #9ccb7a;
+        --text: #6b4a3a;
+        --text-dim: #a08470;
+        --deco-1: #f6c8d8;
+        --deco-2: #f9d9e4;
+        --deco-3: #e8b7c8;
+      }
+
+      .screen[data-season="summer"] {
+        --bg: #bfe3f2;
+        --bg-deep: #9ccb7a;
+        --card: #fff8ec;
+        --card-2: #e8f6fb;
+        --accent: #f6b8cc;
+        --accent-2: #f5c242;
+        --btn-theme: #9ccb7a;
+        --text: #6b4a3a;
+        --text-dim: #8d7a68;
+        --deco-1: #9ccb7a;
+        --deco-2: #f5c242;
+        --deco-3: #f6a8b8;
+      }
+
+      .screen[data-season="autumn"] {
+        --bg: #f0c393;
+        --bg-deep: #d98f5a;
+        --card: #fff8ec;
+        --card-2: #fdeee0;
+        --accent: #e8896f;
+        --accent-2: #f0a858;
+        --btn-theme: #9cb86a;
+        --text: #6b4a3a;
+        --text-dim: #9a7f66;
+        --deco-1: #f0a858;
+        --deco-2: #d98262;
+        --deco-3: #b8b77a;
+      }
+
+      .screen[data-season="winter"] {
+        --bg: #cfe8f4;
+        --bg-deep: #e8f2f8;
+        --card: #fffdf8;
+        --card-2: #eaf6fb;
+        --accent: #f6b8cc;
+        --accent-2: #f5c242;
+        --btn-theme: #9ccb7a;
+        --text: #6b4a3a;
+        --text-dim: #8f9aa6;
+        --deco-1: #fffdf8;
+        --deco-2: #cde8dc;
+        --deco-3: #a8c8d8;
+      }
+
+      body {
+        font-family: var(--font);
+        background: #3a3d4a;
+        color: #f1f2f6;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        gap: 40px;
+        padding: 40px 24px;
+      }
+
+      /* ---------- 设计稿外部控制条 ---------- */
+      .controls {
+        position: sticky;
+        top: 40px;
+        width: 240px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+
+      .controls h2 {
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      .controls p {
+        font-size: 13px;
+        color: #b9bcc9;
+        line-height: 1.6;
+      }
+
+      .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .control-group label {
+        font-size: 13px;
+        color: #b9bcc9;
+      }
+
+      .season-buttons,
+      .state-buttons {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .season-buttons button,
+      .state-buttons button {
+        flex: 1;
+        min-width: 52px;
+        padding: 8px 10px;
+        border: 1px solid #565a6b;
+        border-radius: 10px;
+        background: #2c2f3a;
+        color: #d8dae2;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      .season-buttons button.active,
+      .state-buttons button.active {
+        background: #f5c242;
+        border-color: #f5c242;
+        color: #4a3a20;
+        font-weight: 700;
+      }
+
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #b9bcc9;
+      }
+
+      .asset-panel {
+        display: none;
+        background: #2c2f3a;
+        border: 1px solid #565a6b;
+        border-radius: 12px;
+        padding: 12px;
+        max-height: 320px;
+        overflow-y: auto;
+        font-size: 11px;
+        line-height: 1.7;
+        color: #cfd2dc;
+      }
+
+      .asset-panel.show {
+        display: block;
+      }
+
+      .asset-panel strong {
+        color: #f5c242;
+      }
+
+      /* ---------- 手机画框 ---------- */
+      .phone {
+        width: 440px;
+        height: 956px;
+        border-radius: 44px;
+        background: #11127;
+        padding: 10px;
+        box-shadow:
+          0 0 0 10px #1c1e28,
+          0 30px 80px rgba(0, 0, 0, 0.55);
+        flex: 0 0 auto;
+      }
+
+      .screen {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        border-radius: 36px;
+        overflow: hidden;
+        background: linear-gradient(180deg, var(--bg), var(--bg-deep));
+        color: var(--text);
+        isolation: isolate;
+      }
+
+      /* ---------- 背景装饰层（占位） ---------- */
+      .bg-deco {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        overflow: hidden;
+      }
+
+      .petals {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+      }
+
+      .petal {
+        position: absolute;
+        width: 10px;
+        height: 8px;
+        border-radius: 60% 40% 55% 45%;
+        background: var(--deco-2);
+        opacity: 0.85;
+        animation: drift 9s linear infinite;
+      }
+
+      .petal:nth-child(1) {
+        left: 12%;
+        top: -4%;
+        animation-delay: 0s;
+      }
+      .petal:nth-child(2) {
+        left: 34%;
+        top: -8%;
+        animation-delay: 2.4s;
+        width: 8px;
+        height: 6px;
+      }
+      .petal:nth-child(3) {
+        left: 58%;
+        top: -6%;
+        animation-delay: 4.8s;
+      }
+      .petal:nth-child(4) {
+        left: 78%;
+        top: -3%;
+        animation-delay: 1.2s;
+        width: 7px;
+        height: 6px;
+      }
+      .petal:nth-child(5) {
+        left: 90%;
+        top: -7%;
+        animation-delay: 6s;
+      }
+
+      @keyframes drift {
+        0% {
+          transform: translateY(0) rotate(0deg);
+          opacity: 0;
+        }
+        10% {
+          opacity: 0.85;
+        }
+        100% {
+          transform: translateY(1040px) translateX(-40px) rotate(320deg);
+          opacity: 0;
+        }
+      }
+
+      /* ---------- 内容层 ---------- */
+      .content {
+        position: relative;
+        z-index: 2;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: calc(var(--safe-top) + 10px) 16px
+          calc(var(--safe-bottom) + 12px);
+      }
+
+      /* 标题胶囊：334×120，顶部季节装饰 */
+      .title-card {
+        position: relative;
+        width: var(--w-title);
+        min-height: 108px;
+        border-radius: 30px;
+        background: var(--card);
+        border: 3px solid var(--ink);
+        box-shadow:
+          inset 0 -4px 0 rgba(107, 74, 58, 0.12),
+          0 5px 0 rgba(107, 74, 58, 0.22);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+      }
+
+      .title-card h1 {
+        font-size: 30px;
+        font-weight: 900;
+        letter-spacing: 0.06em;
+        color: var(--ink);
+        text-shadow: 0 2px 0 rgba(255, 255, 255, 0.6);
+      }
+
+      .title-card p {
+        font-size: 13px;
+        color: var(--text-dim);
+        letter-spacing: 0.12em;
+      }
+
+      /* 标题角落的季节装饰（占位：樱花/西瓜/枫叶/雪花） */
+      .title-deco {
+        position: absolute;
+        width: 46px;
+        height: 46px;
+        top: -16px;
+        left: -14px;
+        transform: rotate(-12deg);
+      }
+
+      .title-deco.right {
+        left: auto;
+        right: -14px;
+        top: -10px;
+        transform: rotate(10deg);
+      }
+
+      /* ---------- 硬币舞台（猫咪相对定位） ---------- */
+      .coin-stage {
+        position: relative;
+        flex: 1;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 0;
+      }
+
+      .coin {
+        position: relative;
+        width: var(--w-coin);
+        height: var(--w-coin);
+        z-index: 2;
+        filter: drop-shadow(0 16px 0 rgba(107, 74, 58, 0.18));
+      }
+
+      .coin svg {
+        width: 100%;
+        height: 100%;
+      }
+
+      .coin-shadow {
+        position: absolute;
+        left: 50%;
+        bottom: -20px;
+        transform: translateX(-50%);
+        width: 72%;
+        height: 22px;
+        border-radius: 50%;
+        background: rgba(107, 74, 58, 0.2);
+        filter: blur(2px);
+      }
+
+      /* 猫咪：相对硬币舞台左右下侧；猫宽 140（≈屏宽 32%，对齐 AI 稿实测），
+         bottom = 舞台高/2 - 20 使猫顶与硬币顶齐平 */
+      .cat {
+        position: absolute;
+        bottom: calc(50% - 20px);
+        width: var(--w-cat);
+        height: var(--w-cat);
+        z-index: 3;
+        pointer-events: none;
+      }
+
+      .cat-xiaohei {
+        left: -20px;
+      }
+
+      .cat-xiaobai {
+        right: -20px;
+      }
+
+      .cat svg {
+        width: 100%;
+        height: 100%;
+      }
+
+      /* 待机浮动（克制：3.2s / 5px） */
+      @keyframes bob {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-5px);
+        }
+      }
+
+      .cat-xiaobai svg {
+        animation: bob 3.2s ease-in-out infinite;
+      }
+
+      .cat-xiaohei svg {
+        animation: bob 3.6s ease-in-out infinite reverse;
+      }
+
+      /* 结果态：猫咪欢呼（缩放弹跳；reduced-motion 下关闭） */
+      .cat.cheer svg {
+        animation: cheer 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+
+      @keyframes cheer {
+        0% {
+          transform: scale(1) translateY(0);
+        }
+        45% {
+          transform: scale(1.1) translateY(-14px);
+        }
+        100% {
+          transform: scale(1) translateY(0);
+        }
+      }
+
+      /* 名字标签（猫下方，胶囊 76×26） */
+      .name-tag {
+        position: absolute;
+        bottom: -27px;
+        min-width: 76px;
+        height: 26px;
+        padding: 0 12px;
+        border-radius: var(--radius-pill);
+        background: var(--card);
+        border: 2px solid var(--ink);
+        font-size: 12px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        z-index: 4;
+      }
+
+      .tag-xiaohei {
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+      .tag-xiaobai {
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+      .gender-f {
+        color: #e8899f;
+      }
+      .gender-m {
+        color: #6a9fce;
+      }
+
+      /* ---------- 结果丝带（YES/NO） ---------- */
+      .ribbon {
+        position: relative;
+        width: var(--w-hint);
+        height: 92px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 10px;
+        z-index: 5;
+      }
+
+      .ribbon.show {
+        display: flex;
+        animation: ribbon-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+
+      /* 丝带主体 */
+      .ribbon-body {
+        position: relative;
+        width: 82%;
+        height: 76px;
+        border-radius: 18px;
+        background: var(--card);
+        border: 3px solid var(--ink);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 5px 0 rgba(107, 74, 58, 0.22);
+      }
+
+      .ribbon-body span {
+        font-size: 46px;
+        font-weight: 900;
+        letter-spacing: 0.1em;
+        color: var(--accent-2);
+        -webkit-text-stroke: 2px var(--ink);
+        text-shadow: 0 3px 0 rgba(107, 74, 58, 0.25);
+      }
+
+      /* 丝带两侧燕尾（粉色） */
+      .ribbon-tail {
+        position: absolute;
+        top: 50%;
+        width: 44px;
+        height: 58px;
+        background: var(--accent);
+        border: 3px solid var(--ink);
+        clip-path: polygon(0 0, 100% 8%, 78% 50%, 100% 92%, 0 100%);
+        transform: translateY(-50%);
+      }
+
+      .ribbon-tail.left {
+        left: 0;
+        border-radius: 10px 0 0 10px;
+      }
+
+      .ribbon-tail.right {
+        right: 0;
+        transform: translateY(-50%) scaleX(-1);
+        border-radius: 10px 0 0 10px;
+      }
+
+      @keyframes ribbon-pop {
+        0% {
+          transform: scale(0.7);
+          opacity: 0;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      /* ---------- 彩纸屑（结果态，纯 CSS） ---------- */
+      .confetti {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+        display: none;
+        overflow: hidden;
+      }
+
+      .confetti.show {
+        display: block;
+      }
+
+      .confetti i {
+        position: absolute;
+        top: 34%;
+        width: 10px;
+        height: 14px;
+        border-radius: 3px;
+        opacity: 0;
+        animation: confetti-fall 900ms ease-out forwards;
+      }
+
+      .confetti i:nth-child(1) {
+        left: 30%;
+        background: var(--accent);
+        animation-delay: 0ms;
+      }
+      .confetti i:nth-child(2) {
+        left: 42%;
+        background: var(--accent-2);
+        animation-delay: 60ms;
+      }
+      .confetti i:nth-child(3) {
+        left: 54%;
+        background: var(--btn-theme);
+        animation-delay: 120ms;
+      }
+      .confetti i:nth-child(4) {
+        left: 64%;
+        background: var(--accent);
+        animation-delay: 40ms;
+      }
+      .confetti i:nth-child(5) {
+        left: 38%;
+        background: var(--deco-3);
+        animation-delay: 180ms;
+      }
+
+      @keyframes confetti-fall {
+        0% {
+          transform: translateY(0) rotate(0deg);
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(180px) rotate(260deg);
+          opacity: 0;
+        }
+      }
+
+      /* ---------- 提示胶囊（350×48） ---------- */
+      .hint-pill {
+        height: 48px;
+        width: var(--w-hint);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border-radius: var(--radius-pill);
+        background: var(--card);
+        border: 2.5px solid var(--ink);
+        box-shadow: 0 4px 0 rgba(107, 74, 58, 0.18);
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-dim);
+        letter-spacing: 0.08em;
+        margin-bottom: 14px;
+      }
+
+      /* ---------- 底部按钮（163×76） ---------- */
+      .actions {
+        display: flex;
+        gap: 14px;
+        width: 100%;
+        justify-content: center;
+      }
+
+      .action-btn {
+        width: var(--w-btn);
+        height: var(--h-btn);
+        border-radius: 24px;
+        border: 3px solid var(--ink);
+        box-shadow: 0 6px 0 rgba(107, 74, 58, 0.25);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        font-size: 20px;
+        font-weight: 800;
+        color: var(--ink);
+        cursor: pointer;
+      }
+
+      .action-btn:active {
+        transform: translateY(4px);
+        box-shadow: 0 2px 0 rgba(107, 74, 58, 0.25);
+      }
+
+      .action-history {
+        background: var(--accent);
+      }
+
+      .action-theme {
+        background: var(--btn-theme);
+      }
+
+      .action-btn svg {
+        width: 26px;
+        height: 26px;
+        stroke: var(--ink);
+        stroke-width: 2;
+        fill: none;
+      }
+
+      /* ============================================================
+         浮窗（战绩 / 换主题）：猫咪探头 + 品牌行 + 粉色标题胶囊
+         ============================================================ */
+      .overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 10;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(60, 45, 35, 0.3);
+      }
+
+      .overlay.show {
+        display: flex;
+      }
+
+      .overlay-inner {
+        position: relative;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 0 22px;
+      }
+
+      /* 品牌行：左上 logo + 右上设置 */
+      .brand-row {
+        position: absolute;
+        top: -150px;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 6px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 40px;
+        padding: 0 14px;
+        border-radius: var(--radius-pill);
+        background: var(--card);
+        border: 2.5px solid var(--ink);
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .brand svg {
+        width: 22px;
+        height: 22px;
+      }
+
+      .gear-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: var(--card);
+        border: 2.5px solid var(--ink);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .gear-btn svg {
+        width: 22px;
+        height: 22px;
+        stroke: var(--ink);
+        stroke-width: 2;
+        fill: none;
+      }
+
+      .sheet {
+        position: relative;
+        width: 100%;
+        max-width: 388px;
+        max-height: 72%;
+        overflow-y: auto;
+        border-radius: 28px;
+        background: var(--card);
+        border: 3px solid var(--ink);
+        box-shadow: 0 10px 0 rgba(107, 74, 58, 0.25);
+        padding: 34px 20px 20px;
+        animation: sheet-in 200ms ease-out;
+      }
+
+      @keyframes sheet-in {
+        from {
+          transform: translateY(24px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+
+      /* 猫咪探头：从浮窗顶部两侧露出 */
+      .peek-cats {
+        position: absolute;
+        top: -78px;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-between;
+        padding: 0 24px;
+        pointer-events: none;
+        z-index: 2;
+      }
+
+      .peek-cat {
+        width: 140px;
+        height: 118px;
+      }
+
+      .peek-cat svg {
+        width: 100%;
+        height: 100%;
+      }
+
+      /* 粉色标题胶囊 */
+      .sheet-title {
+        position: absolute;
+        top: 14px;
+        left: 50%;
+        transform: translateX(-50%);
+        height: 52px;
+        min-width: 180px;
+        padding: 0 28px;
+        border-radius: var(--radius-pill);
+        background: var(--accent);
+        border: 2.5px solid var(--ink);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-size: 22px;
+        font-weight: 900;
+        color: var(--ink);
+        z-index: 3;
+      }
+
+      .sheet-title svg {
+        width: 22px;
+        height: 22px;
+        stroke: var(--ink);
+        stroke-width: 2;
+        fill: none;
+      }
+
+      /* 战绩列表：时间 + 硬币头像 + YES/NO */
+      .history-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin: 44px 0 16px;
+      }
+
+      .history-list li {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px;
+        border-radius: 16px;
+        background: var(--card-2);
+        font-size: 16px;
+      }
+
+      .history-time {
+        flex: 1;
+        color: var(--text);
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* 硬币头像（金/银，CSS 绘制） */
+      .coin-avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        border: 2px solid var(--ink);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 900;
+        flex: 0 0 auto;
+      }
+
+      .coin-avatar.yes {
+        background: radial-gradient(
+          circle at 35% 30%,
+          #ffe9a0,
+          #f0c75e 60%,
+          #c9982f
+        );
+        color: #8a6d1f;
+      }
+
+      .coin-avatar.no {
+        background: radial-gradient(
+          circle at 35% 30%,
+          #ffffff,
+          #c9ccd1 60%,
+          #9aa0ab
+        );
+        color: #6b7280;
+      }
+
+      .history-face {
+        font-size: 18px;
+        font-weight: 900;
+        min-width: 52px;
+        text-align: right;
+      }
+
+      .sheet-clear {
+        width: 100%;
+        height: 52px;
+        border-radius: var(--radius-pill);
+        border: 2.5px solid var(--ink);
+        background: var(--accent);
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--ink);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        cursor: pointer;
+      }
+
+      .sheet-clear svg {
+        width: 18px;
+        height: 18px;
+        stroke: var(--ink);
+        stroke-width: 2;
+        fill: none;
+      }
+
+      .sheet-close {
+        width: 100%;
+        height: 52px;
+        margin-top: 12px;
+        border-radius: var(--radius-pill);
+        border: 2.5px solid var(--ink);
+        background: var(--card);
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--ink);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        cursor: pointer;
+      }
+
+      /* ---------- 主题选择：2×2 场景缩略卡 ---------- */
+      .theme-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin: 44px 0 14px;
+      }
+
+      .theme-tile {
+        position: relative;
+        height: 120px;
+        border-radius: 18px;
+        border: 3px solid var(--ink);
+        overflow: hidden;
+        cursor: pointer;
+        padding: 0;
+        background: none;
+      }
+
+      .theme-tile .thumb {
+        position: absolute;
+        inset: 0;
+      }
+
+      .theme-tile .thumb svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      .theme-tile .label {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 248, 236, 0.92);
+        border-top: 2px solid var(--ink);
+        font-size: 15px;
+        font-weight: 800;
+        color: var(--ink);
+      }
+
+      .theme-tile.active {
+        outline: 4px solid var(--accent-2);
+        outline-offset: 2px;
+      }
+
+      .theme-tile .check {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: var(--accent-2);
+        border: 2.5px solid var(--ink);
+        display: none;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .theme-tile.active .check {
+        display: flex;
+      }
+
+      .theme-tile .check svg {
+        width: 16px;
+        height: 16px;
+        stroke: var(--ink);
+        stroke-width: 3;
+        fill: none;
+      }
+
+      .auto-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 56px;
+        padding: 0 16px;
+        border-radius: var(--radius-pill);
+        background: var(--card-2);
+        border: 2px solid rgba(107, 74, 58, 0.2);
+        font-size: 15px;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      .switch {
+        width: 56px;
+        height: 32px;
+        border-radius: var(--radius-pill);
+        border: 2.5px solid var(--ink);
+        background: var(--accent-2);
+        position: relative;
+      }
+
+      .switch::after {
+        content: "";
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: #fff;
+        border: 2px solid var(--ink);
+      }
+
+      .current-season {
+        text-align: center;
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text-dim);
+        margin-bottom: 10px;
+      }
+
+      .current-season b {
+        color: #e8899f;
+      }
+
+      /* ---------- 标注模式 ---------- */
+      .dim-label {
+        display: none;
+        position: absolute;
+        z-index: 20;
+        padding: 2px 6px;
+        border-radius: 6px;
+        background: rgba(20, 22, 30, 0.82);
+        color: #ffd166;
+        font-size: 10px;
+        font-family: ui-monospace, monospace;
+        white-space: nowrap;
+        transform: translate(-50%, -50%);
+      }
+
+      .annotate .dim-label {
+        display: block;
+      }
+
+      /* ---------- 减少动效 ---------- */
+      @media (prefers-reduced-motion: reduce) {
+        .petal,
+        .cat svg,
+        .ribbon.show,
+        .confetti i {
+          animation: none !important;
+        }
+      }
+
+      /* ---------- 窄屏：画框等比缩放（避免 440 溢出手机视口） ---------- */
+      @media (max-width: 480px) {
+        body {
+          padding: 16px 12px;
+        }
+      }
+
+      @media (max-width: 430px) {
+        .phone {
+          transform: scale(0.9);
+          transform-origin: top center;
+        }
+      }
+
+      @media (max-width: 400px) {
+        .phone {
+          transform: scale(0.84);
+        }
+      }
+
+      @media (max-width: 380px) {
+        .phone {
+          transform: scale(0.78);
+        }
+      }
+
+      /* ---------- 375 小屏档（等比缩小） ---------- */
+      @media (max-width: 400px) {
+        :root {
+          --w-title: 300px;
+          --w-coin: 210px;
+          --w-cat: 168px;
+          --w-hint: 320px;
+          --w-btn: 148px;
+          --h-btn: 70px;
+        }
+
+        .title-card h1 {
+          font-size: 26px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <aside class="controls">
+      <h2>幸运硬币 · UI 设计稿 v2</h2>
+      <p>
+        基准 440 × 956（iPhone 18 Pro Max 逻辑像素，@3x = 1320 × 2868）<br />
+        构图按 AI 设计稿实测：猫咪在硬币左右两侧，名字标签 小黑 ♀ / 小白 ♂
+      </p>
+
+      <div class="control-group">
+        <label>季节主题</label>
+        <div class="season-buttons" id="seasonButtons">
+          <button data-season="spring" class="active">春</button>
+          <button data-season="summer">夏</button>
+          <button data-season="autumn">秋</button>
+          <button data-season="winter">冬</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label>结果状态</label>
+        <div class="state-buttons" id="stateButtons">
+          <button data-state="idle" class="active">待机</button>
+          <button data-state="yes">YES</button>
+          <button data-state="no">NO</button>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label class="toggle-row">
+          <input type="checkbox" id="annotateToggle" />
+          显示尺寸标注
+        </label>
+        <label class="toggle-row">
+          <input type="checkbox" id="assetToggle" />
+          显示资产清单
+        </label>
+      </div>
+
+      <div class="asset-panel" id="assetPanel"></div>
+      <p>
+        说明：硬币本体保留现有 3D 实现（此处 SVG 占位）；背景/猫咪为占位图，按
+        asset-manifest.md 生成后替换。
+      </p>
+    </aside>
+
+    <div class="phone">
+      <div class="screen" id="screen" data-season="spring">
+        <!-- 背景装饰层（占位） -->
+        <div class="bg-deco" data-asset="bg-{season}@2x">
+          <svg viewBox="0 0 440 956" preserveAspectRatio="none">
+            <rect
+              x="0"
+              y="520"
+              width="440"
+              height="436"
+              fill="var(--bg-deep)"
+              opacity="0.6"
+            />
+            <!-- 左侧樱花树 -->
+            <g>
+              <rect
+                x="60"
+                y="430"
+                width="14"
+                height="140"
+                rx="6"
+                fill="#9a7050"
+              />
+              <circle cx="67" cy="368" r="66" fill="var(--deco-1)" />
+              <circle cx="30" cy="404" r="42" fill="var(--deco-2)" />
+              <circle cx="104" cy="398" r="40" fill="var(--deco-2)" />
+            </g>
+            <!-- 右侧树 -->
+            <g>
+              <rect
+                x="352"
+                y="470"
+                width="12"
+                height="120"
+                rx="6"
+                fill="#9a7050"
+              />
+              <circle cx="358" cy="414" r="58" fill="var(--deco-1)" />
+              <circle cx="324" cy="446" r="36" fill="var(--deco-3)" />
+              <circle cx="392" cy="444" r="34" fill="var(--deco-3)" />
+            </g>
+            <!-- 云 -->
+            <g opacity="0.85">
+              <ellipse cx="110" cy="120" rx="48" ry="20" fill="#fff" />
+              <ellipse cx="148" cy="112" rx="30" ry="16" fill="#fff" />
+              <ellipse cx="336" cy="160" rx="40" ry="16" fill="#fff" />
+            </g>
+            <!-- 房屋/栅栏（占位） -->
+            <g opacity="0.9">
+              <rect
+                x="20"
+                y="590"
+                width="90"
+                height="60"
+                rx="8"
+                fill="#f2d9b8"
+                stroke="#6b4a3a"
+                stroke-width="2"
+              />
+              <path
+                d="M14 592 L65 558 L116 592 Z"
+                fill="#e8a86a"
+                stroke="#6b4a3a"
+                stroke-width="2"
+              />
+              <rect
+                x="52"
+                y="616"
+                width="22"
+                height="34"
+                rx="3"
+                fill="#b98a5e"
+              />
+            </g>
+          </svg>
+        </div>
+
+        <div class="petals">
+          <span class="petal"></span>
+          <span class="petal"></span>
+          <span class="petal"></span>
+          <span class="petal"></span>
+          <span class="petal"></span>
+        </div>
+
+        <!-- 彩纸屑（结果态） -->
+        <div class="confetti" id="confetti">
+          <i></i><i></i><i></i><i></i><i></i>
+        </div>
+
+        <div class="content">
+          <!-- 标题胶囊 334×108 -->
+          <header class="title-card" data-asset-text="CSS 绘制，不切图">
+            <div class="title-deco">
+              <svg viewBox="0 0 46 46">
+                <g fill="var(--accent)">
+                  <circle cx="23" cy="10" r="8" />
+                  <circle cx="36" cy="19" r="8" />
+                  <circle cx="32" cy="34" r="8" />
+                  <circle cx="14" cy="34" r="8" />
+                  <circle cx="10" cy="19" r="8" />
+                </g>
+                <circle cx="23" cy="23" r="6" fill="var(--accent-2)" />
+              </svg>
+            </div>
+            <h1>幸运硬币</h1>
+            <p>抛硬币，替你做决定</p>
+            <span class="dim-label" style="left: 50%; top: -18px"
+              >334 × 108</span
+            >
+          </header>
+
+          <!-- 结果丝带（顶部，结果态显示） -->
+          <div class="ribbon" id="ribbon">
+            <div class="ribbon-tail left"></div>
+            <div class="ribbon-body"><span id="ribbonText">YES</span></div>
+            <div class="ribbon-tail right"></div>
+          </div>
+
+          <!-- 硬币舞台：猫咪在硬币左右两侧 -->
+          <section class="coin-stage">
+            <div
+              class="coin"
+              data-asset-text="保留现有 3D 实现（未来皮肤 512×512 透明）"
+            >
+              <svg viewBox="0 0 240 240">
+                <circle
+                  cx="120"
+                  cy="120"
+                  r="112"
+                  fill="#f0c75e"
+                  stroke="#8a6d1f"
+                  stroke-width="4"
+                />
+                <circle
+                  cx="120"
+                  cy="120"
+                  r="96"
+                  fill="none"
+                  stroke="#c9982f"
+                  stroke-width="10"
+                  stroke-dasharray="3 5"
+                  opacity="0.85"
+                />
+                <circle cx="120" cy="120" r="82" fill="#ffe9a0" />
+                <circle
+                  cx="120"
+                  cy="120"
+                  r="82"
+                  fill="none"
+                  stroke="#c9982f"
+                  stroke-width="3"
+                />
+                <text
+                  x="120"
+                  y="148"
+                  text-anchor="middle"
+                  font-family="system-ui, 'PingFang SC', sans-serif"
+                  font-size="72"
+                  font-weight="800"
+                  fill="#8a6d1f"
+                >
+                  运
+                </text>
+              </svg>
+              <div class="coin-shadow"></div>
+              <span class="dim-label" style="left: 50%; top: 50%"
+                >硬币 240×240</span
+              >
+            </div>
+
+            <!-- 小黑：德文奶牛母猫 -->
+            <div
+              class="cat cat-xiaohei"
+              id="catXiaohei"
+              data-asset="cat-xiaohei-idle@2x"
+            >
+              <svg viewBox="0 0 200 200">
+                <ellipse
+                  cx="100"
+                  cy="176"
+                  rx="52"
+                  ry="12"
+                  fill="rgba(107,74,58,0.16)"
+                />
+                <!-- 身体 -->
+                <ellipse
+                  cx="100"
+                  cy="132"
+                  rx="40"
+                  ry="36"
+                  fill="#fffdf8"
+                  stroke="#6b4a3a"
+                  stroke-width="4"
+                />
+                <path d="M76 116 q12 -12 24 0 q-4 20 -24 12 z" fill="#3a3330" />
+                <path d="M116 138 q12 -8 16 4 q-8 12 -16 0 z" fill="#3a3330" />
+                <!-- 头 -->
+                <circle
+                  cx="100"
+                  cy="76"
+                  r="35"
+                  fill="#fffdf8"
+                  stroke="#6b4a3a"
+                  stroke-width="4"
+                />
+                <path
+                  d="M70 52 L62 20 L86 38 Z"
+                  fill="#fffdf8"
+                  stroke="#6b4a3a"
+                  stroke-width="4"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M130 52 L138 20 L114 38 Z"
+                  fill="#fffdf8"
+                  stroke="#6b4a3a"
+                  stroke-width="4"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M78 68 q8 -8 16 0"
+                  stroke="#6b4a3a"
+                  stroke-width="3.5"
+                  fill="none"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M106 68 q8 -8 16 0"
+                  stroke="#6b4a3a"
+                  stroke-width="3.5"
+                  fill="none"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M96 84 q4 4 8 0"
+                  stroke="#6b4a3a"
+                  stroke-width="3.5"
+                  fill="none"
+                  stroke-linecap="round"
+                />
+                <!-- 头顶黑斑 + 粉花 -->
+                <path
+                  d="M84 44 q16 -10 32 0 q-8 12 -16 12 q-8 0 -16 -12 z"
+                  fill="#3a3330"
+                />
+                <circle
+                  cx="66"
+                  cy="46"
+                  r="7"
+                  fill="#f6a8b8"
+                  stroke="#6b4a3a"
+                  stroke-width="2"
+                />
+              </svg>
+              <div class="name-tag tag-xiaohei">
+                小黑 <span class="gender-f">♀</span>
+              </div>
+            </div>
+
+            <!-- 小白：德文纯白公猫 -->
+            <div
+              class="cat cat-xiaobai"
+              id="catXiaobai"
+              data-asset="cat-xiaobai-idle@2x"
+            >
+              <svg viewBox="0 0 200 200">
+                <ellipse
+                  cx="100"
+                  cy="176"
+                  rx="50"
+                  ry="11"
+                  fill="rgba(107,74,58,0.14)"
+                />
+                <ellipse
+                  cx="100"
+                  cy="132"
+                  rx="38"
+                  ry="35"
+                  fill="#fffdf8"
+                  stroke="#6b4a3a"
+                  stroke-width="4"
+                />
+                <circle
+                  cx="100"
+                  cy="76"
+                  r="33"
+                  fill="#fffdf8"
+                  stroke="#6b4a3a"
+                  stroke-width="4"
+                />
+                <path
+                  d="M72 54 L64 24 L86 40 Z"
+                  fill="#fffdf8"
+                  stroke="#6b4a3a"
+                  stroke-width="4"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M128 54 L136 24 L114 40 Z"
+                  fill="#fffdf8"
+                  stroke="#6b4a3a"
+                  stroke-width="4"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M79 68 q8 -8 16 0"
+                  stroke="#6b4a3a"
+                  stroke-width="3.5"
+                  fill="none"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M105 68 q8 -8 16 0"
+                  stroke="#6b4a3a"
+                  stroke-width="3.5"
+                  fill="none"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="M96 84 q4 4 8 0"
+                  stroke="#6b4a3a"
+                  stroke-width="3.5"
+                  fill="none"
+                  stroke-linecap="round"
+                />
+                <circle cx="100" cy="82" r="4.5" fill="#f6a8b8" />
+                <circle
+                  cx="132"
+                  cy="60"
+                  r="5"
+                  fill="var(--btn-theme)"
+                  stroke="#6b4a3a"
+                  stroke-width="2"
+                />
+              </svg>
+              <div class="name-tag tag-xiaobai">
+                小白 <span class="gender-m">♂</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- 提示胶囊 350×48 -->
+          <div
+            class="hint-pill"
+            id="hintPill"
+            data-asset-text="CSS 绘制，不切图"
+          >
+            左右滑动 · 抛硬币
+          </div>
+
+          <!-- 底部按钮 163×76 -->
+          <footer class="actions">
+            <button class="action-btn action-history" id="historyBtn">
+              <svg
+                viewBox="0 0 24 24"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+                <path d="M3 3v5h5" />
+                <path d="M12 7v5l3 2" />
+              </svg>
+              战绩
+            </button>
+            <button class="action-btn action-theme" id="themeBtn">
+              <svg
+                viewBox="0 0 24 24"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 3a9 9 0 0 0 0 18z" />
+              </svg>
+              换主题
+            </button>
+          </footer>
+        </div>
+
+        <!-- 战绩浮窗 -->
+        <div class="overlay" id="historyOverlay">
+          <div class="overlay-inner">
+            <div class="brand-row">
+              <div class="brand">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--ink)"
+                  stroke-width="2"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="3"
+                    fill="var(--accent-2)"
+                    stroke="none"
+                  />
+                </svg>
+                幸运硬币
+              </div>
+              <div class="gear-btn">
+                <svg viewBox="0 0 24 24" stroke-linecap="round">
+                  <circle cx="12" cy="12" r="3.2" />
+                  <path
+                    d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2 2M16.4 16.4l2 2M18.4 5.6l-2 2M7.6 16.4l-2 2"
+                  />
+                </svg>
+              </div>
+            </div>
+
+            <div class="sheet">
+              <div class="peek-cats">
+                <div class="peek-cat">
+                  <svg viewBox="0 0 140 118">
+                    <ellipse
+                      cx="70"
+                      cy="96"
+                      rx="42"
+                      ry="34"
+                      fill="#fffdf8"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                    />
+                    <path
+                      d="M34 60 L26 26 L52 48 Z"
+                      fill="#fffdf8"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M106 60 L114 26 L88 48 Z"
+                      fill="#fffdf8"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M44 70 q8 -8 16 0"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                      fill="none"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M80 70 q8 -8 16 0"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                      fill="none"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M62 84 q8 6 16 0"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                      fill="none"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M44 40 q26 -14 52 0 q-12 16 -26 16 q-14 0 -26 -16 z"
+                      fill="#3a3330"
+                    />
+                    <ellipse
+                      cx="40"
+                      cy="108"
+                      rx="14"
+                      ry="9"
+                      fill="#fffdf8"
+                      stroke="#6b4a3a"
+                      stroke-width="3"
+                    />
+                    <ellipse
+                      cx="100"
+                      cy="108"
+                      rx="14"
+                      ry="9"
+                      fill="#fffdf8"
+                      stroke="#6b4a3a"
+                      stroke-width="3"
+                    />
+                  </svg>
+                </div>
+                <div class="peek-cat">
+                  <svg viewBox="0 0 140 118">
+                    <ellipse
+                      cx="70"
+                      cy="96"
+                      rx="42"
+                      ry="34"
+                      fill="#fffdf8"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                    />
+                    <path
+                      d="M34 60 L26 26 L52 48 Z"
+                      fill="#fffdf8"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M106 60 L114 26 L88 48 Z"
+                      fill="#fffdf8"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M44 70 q8 -8 16 0"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                      fill="none"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M80 70 q8 -8 16 0"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                      fill="none"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M62 84 q8 6 16 0"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                      fill="none"
+                      stroke-linecap="round"
+                    />
+                    <circle cx="70" cy="82" r="5" fill="#f6a8b8" />
+                    <ellipse
+                      cx="40"
+                      cy="108"
+                      rx="14"
+                      ry="9"
+                      fill="#fffdf8"
+                      stroke="#6b4a3a"
+                      stroke-width="3"
+                    />
+                    <ellipse
+                      cx="100"
+                      cy="108"
+                      rx="14"
+                      ry="9"
+                      fill="#fffdf8"
+                      stroke="#6b4a3a"
+                      stroke-width="3"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              <div class="sheet-title">
+                <svg viewBox="0 0 24 24" stroke-linecap="round">
+                  <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+                  <path d="M3 3v5h5" />
+                  <path d="M12 7v5l3 2" />
+                </svg>
+                战绩
+              </div>
+
+              <ul class="history-list">
+                <li>
+                  <span class="history-time">11-10 13:00</span>
+                  <span class="coin-avatar yes">运</span>
+                  <span class="history-face">YES</span>
+                </li>
+                <li>
+                  <span class="history-time">11-10 12:41</span>
+                  <span class="coin-avatar no">运</span>
+                  <span class="history-face">NO</span>
+                </li>
+                <li>
+                  <span class="history-time">11-09 23:18</span>
+                  <span class="coin-avatar yes">运</span>
+                  <span class="history-face">YES</span>
+                </li>
+                <li>
+                  <span class="history-time">11-09 09:05</span>
+                  <span class="coin-avatar no">运</span>
+                  <span class="history-face">NO</span>
+                </li>
+              </ul>
+
+              <button class="sheet-clear">
+                <svg viewBox="0 0 24 24" stroke-linecap="round">
+                  <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
+                </svg>
+                清除全部战绩
+              </button>
+              <button class="sheet-close" id="historyClose">关闭</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 换主题浮窗 -->
+        <div class="overlay" id="themeOverlay">
+          <div class="overlay-inner">
+            <div class="brand-row">
+              <div class="brand">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="var(--ink)"
+                  stroke-width="2"
+                >
+                  <circle cx="12" cy="12" r="9" />
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="3"
+                    fill="var(--accent-2)"
+                    stroke="none"
+                  />
+                </svg>
+                幸运硬币
+              </div>
+              <div class="gear-btn">
+                <svg viewBox="0 0 24 24" stroke-linecap="round">
+                  <circle cx="12" cy="12" r="3.2" />
+                  <path
+                    d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2 2M16.4 16.4l2 2M18.4 5.6l-2 2M7.6 16.4l-2 2"
+                  />
+                </svg>
+              </div>
+            </div>
+
+            <div class="sheet">
+              <div class="peek-cats">
+                <div class="peek-cat">
+                  <svg viewBox="0 0 140 118">
+                    <ellipse
+                      cx="70"
+                      cy="96"
+                      rx="42"
+                      ry="34"
+                      fill="#fffdf8"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                    />
+                    <path
+                      d="M34 60 L26 26 L52 48 Z"
+                      fill="#fffdf8"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M106 60 L114 26 L88 48 Z"
+                      fill="#fffdf8"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M44 70 q8 -8 16 0"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                      fill="none"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M80 70 q8 -8 16 0"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                      fill="none"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M62 84 q8 6 16 0"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                      fill="none"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M44 40 q26 -14 52 0 q-12 16 -26 16 q-14 0 -26 -16 z"
+                      fill="#3a3330"
+                    />
+                  </svg>
+                </div>
+                <div class="peek-cat">
+                  <svg viewBox="0 0 140 118">
+                    <ellipse
+                      cx="70"
+                      cy="96"
+                      rx="42"
+                      ry="34"
+                      fill="#fffdf8"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                    />
+                    <path
+                      d="M34 60 L26 26 L52 48 Z"
+                      fill="#fffdf8"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M106 60 L114 26 L88 48 Z"
+                      fill="#fffdf8"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M44 70 q8 -8 16 0"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                      fill="none"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M80 70 q8 -8 16 0"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                      fill="none"
+                      stroke-linecap="round"
+                    />
+                    <path
+                      d="M62 84 q8 6 16 0"
+                      stroke="#6b4a3a"
+                      stroke-width="4"
+                      fill="none"
+                      stroke-linecap="round"
+                    />
+                    <circle cx="70" cy="82" r="5" fill="#f6a8b8" />
+                  </svg>
+                </div>
+              </div>
+
+              <div class="sheet-title">
+                <svg viewBox="0 0 24 24" stroke-linecap="round">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M12 3a9 9 0 0 0 0 18z" />
+                </svg>
+                换主题
+              </div>
+
+              <div class="theme-grid" id="themeGrid">
+                <button class="theme-tile spring active" data-season="spring">
+                  <div class="thumb">
+                    <svg viewBox="0 0 160 120">
+                      <rect width="160" height="120" fill="#f9d9e4" />
+                      <circle cx="80" cy="66" r="34" fill="#f6c8d8" />
+                      <circle cx="56" cy="84" r="20" fill="#fbe4ec" />
+                      <circle cx="104" cy="84" r="20" fill="#fbe4ec" />
+                    </svg>
+                  </div>
+                  <span class="check">
+                    <svg viewBox="0 0 24 24" stroke-linecap="round">
+                      <path d="M4 12l5 5L20 6" />
+                    </svg>
+                  </span>
+                  <span class="label">春</span>
+                </button>
+                <button class="theme-tile summer" data-season="summer">
+                  <div class="thumb">
+                    <svg viewBox="0 0 160 120">
+                      <rect width="160" height="120" fill="#cdeaf6" />
+                      <circle cx="80" cy="60" r="26" fill="#f5c242" />
+                      <path
+                        d="M80 18v10M80 92v10M38 60h10M112 60h10M50 30l7 7M103 83l7 7M110 30l-7 7M57 83l-7 7"
+                        stroke="#f5c242"
+                        stroke-width="5"
+                        stroke-linecap="round"
+                      />
+                    </svg>
+                  </div>
+                  <span class="check">
+                    <svg viewBox="0 0 24 24" stroke-linecap="round">
+                      <path d="M4 12l5 5L20 6" />
+                    </svg>
+                  </span>
+                  <span class="label">夏</span>
+                </button>
+                <button class="theme-tile autumn" data-season="autumn">
+                  <div class="thumb">
+                    <svg viewBox="0 0 160 120">
+                      <rect width="160" height="120" fill="#f0d3a8" />
+                      <path
+                        d="M80 22l10 20 22-6-6 22 20 12-20 12 6 22-22-6-10 20-10-20-22 6 6-22-20-12 20-12-6-22 22 6z"
+                        fill="#d98262"
+                      />
+                    </svg>
+                  </div>
+                  <span class="check">
+                    <svg viewBox="0 0 24 24" stroke-linecap="round">
+                      <path d="M4 12l5 5L20 6" />
+                    </svg>
+                  </span>
+                  <span class="label">秋</span>
+                </button>
+                <button class="theme-tile winter" data-season="winter">
+                  <div class="thumb">
+                    <svg viewBox="0 0 160 120">
+                      <rect width="160" height="120" fill="#dceff9" />
+                      <g
+                        stroke="#7fb6d8"
+                        stroke-width="4"
+                        stroke-linecap="round"
+                      >
+                        <path d="M80 24v72M50 42l60 36M110 42L50 78" />
+                      </g>
+                    </svg>
+                  </div>
+                  <span class="check">
+                    <svg viewBox="0 0 24 24" stroke-linecap="round">
+                      <path d="M4 12l5 5L20 6" />
+                    </svg>
+                  </span>
+                  <span class="label">冬</span>
+                </button>
+              </div>
+
+              <div class="auto-row">
+                跟随季节自动切换
+                <span class="switch"></span>
+              </div>
+              <div class="current-season">
+                当前：<b id="currentSeason">春季</b>
+              </div>
+              <button class="sheet-close" id="themeClose">关闭</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // 设计稿交互：季节 / 结果态 / 标注 / 资产清单 / 浮窗
+      const screen = document.getElementById("screen");
+      const ribbon = document.getElementById("ribbon");
+      const ribbonText = document.getElementById("ribbonText");
+      const confetti = document.getElementById("confetti");
+      const hintPill = document.getElementById("hintPill");
+      const catXiaohei = document.getElementById("catXiaohei");
+      const catXiaobai = document.getElementById("catXiaobai");
+      const currentSeason = document.getElementById("currentSeason");
+      const SEASON_CN = {
+        spring: "春季",
+        summer: "夏季",
+        autumn: "秋季",
+        winter: "冬季",
+      };
+
+      // 季节切换：主题变量 + 按钮态 + 当前季节文案
+      function setSeason(name) {
+        screen.dataset.season = name;
+        document
+          .querySelectorAll("#seasonButtons button")
+          .forEach((b) =>
+            b.classList.toggle("active", b.dataset.season === name),
+          );
+        document
+          .querySelectorAll(".theme-tile")
+          .forEach((b) =>
+            b.classList.toggle("active", b.dataset.season === name),
+          );
+        if (currentSeason) currentSeason.textContent = SEASON_CN[name];
+      }
+
+      document
+        .getElementById("seasonButtons")
+        .addEventListener("click", (e) => {
+          const btn = e.target.closest("button[data-season]");
+          if (btn) setSeason(btn.dataset.season);
+        });
+
+      // 结果态：待机（隐藏丝带/彩纸，提示"左右滑动"）/ YES / NO
+      function setResultState(state) {
+        document
+          .querySelectorAll("#stateButtons button")
+          .forEach((b) =>
+            b.classList.toggle("active", b.dataset.state === state),
+          );
+        const isResult = state === "yes" || state === "no";
+        ribbon.classList.toggle("show", isResult);
+        confetti.classList.toggle("show", isResult);
+        catXiaohei.classList.toggle("cheer", isResult);
+        catXiaobai.classList.toggle("cheer", isResult);
+        if (isResult) {
+          ribbonText.textContent = state === "yes" ? "YES" : "NO";
+          hintPill.textContent = "再来一次 · 左右滑动";
+        } else {
+          hintPill.textContent = "左右滑动 · 抛硬币";
+        }
+      }
+
+      document.getElementById("stateButtons").addEventListener("click", (e) => {
+        const btn = e.target.closest("button[data-state]");
+        if (btn) setResultState(btn.dataset.state);
+      });
+
+      // 尺寸标注
+      document
+        .getElementById("annotateToggle")
+        .addEventListener("change", (e) => {
+          screen.classList.toggle("annotate", e.target.checked);
+        });
+
+      // 资产清单
+      const assetToggle = document.getElementById("assetToggle");
+      const assetPanel = document.getElementById("assetPanel");
+      assetToggle.addEventListener("change", () => {
+        assetPanel.classList.toggle("show", assetToggle.checked);
+        if (assetToggle.checked && !assetPanel.innerHTML) {
+          const bitmap = [...document.querySelectorAll("[data-asset]")].map(
+            (el) => `· ${el.dataset.asset}`,
+          );
+          assetPanel.innerHTML =
+            "<strong>位图素材（按 manifest 生成）</strong><br />" +
+            bitmap.join("<br />") +
+            "<br /><br /><strong>CSS/SVG（不切图）</strong><br />" +
+            [...document.querySelectorAll("[data-asset-text]")]
+              .map((el) => `· ${el.dataset.assetText}`)
+              .join("<br />");
+        }
+      });
+
+      // 浮窗（互斥：打开一个关闭另一个）
+      const historyOverlay = document.getElementById("historyOverlay");
+      const themeOverlay = document.getElementById("themeOverlay");
+      function openOverlay(target) {
+        historyOverlay.classList.toggle("show", target === historyOverlay);
+        themeOverlay.classList.toggle("show", target === themeOverlay);
+      }
+      document
+        .getElementById("historyBtn")
+        .addEventListener("click", () => openOverlay(historyOverlay));
+      document
+        .getElementById("themeBtn")
+        .addEventListener("click", () => openOverlay(themeOverlay));
+      document
+        .getElementById("historyClose")
+        .addEventListener("click", () => openOverlay(null));
+      document
+        .getElementById("themeClose")
+        .addEventListener("click", () => openOverlay(null));
+      document.querySelectorAll(".theme-tile").forEach((tile) => {
+        tile.addEventListener("click", () => {
+          setSeason(tile.dataset.season);
+          openOverlay(null);
+        });
+      });
+    </script>
+  </body>
+</html>

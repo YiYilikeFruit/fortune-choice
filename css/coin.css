@@ -1,25 +1,19 @@
 /* ============================================================
-   幸运硬币选择 - 界面样式（单屏自适应，零依赖，动效只动 transform/opacity）
-   设计要点：硬币 3D 用 perspective+rotateY+preserve-3d；强制单屏布局；
-   可调参数（颜色/尺寸/动画时长）集中 :root 变量，禁散落硬编码。
-   渐变豁免：硬币本体材质渐变（PL002-004，计 27 处）为产品物件绘制而非页面装饰，
-   lint/inspect 的 gradient 规则对其为已知误判；豁免记录见 z.plan PL007.5b。
-   （本环境 prettier 自动格式化会把行内注释移出函数调用行，taste-skill-ignore
-   行内机制不可用，故采用记录式豁免。）
+   幸运硬币选择 - 界面样式（PL009 四季主题框架）
+   设计基准：440×956（iPhone 18 Pro Max 逻辑像素），弹性适配 375–440
+   主题：四季配色走 CSS 变量（#app[data-season]），背景图为离线包内 WebP
+   硬币：保留 PL002-004 的 3D 材质体系（写实金属渐变，含 taste-skill-ignore）
+   动效：只动 transform/opacity；reduced-motion 全关
    ============================================================ */
 
 :root {
-  --bg: #1e2030;
-  --surface: #2a2d42;
-  --surface-2: #343850;
-  --text: #eef0f6;
-  --text-dim: #9aa0b5;
-  --accent: #ffd166;
-  /* PL007.4c：accent-2/danger 从常驻 chrome 退役，保留为语义色（成功/失败时刻） */
-  --accent-2: #06d6a0;
-  --danger: #ef476f;
-  --radius: 14px;
-  --coin-size: min(58vw, 240px);
+  --ink: #6b4a3a;
+  --stroke: 2.5px;
+  --radius-card: 22px;
+  --radius-pill: 999px;
+  --font: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
   --touch-min: 44px;
   /* 硬币立体化参数（PL002）：侧面厚度 / 圆柱分段数 / 齿环亮暗色（壁色由主题派生） */
   --coin-thick: 10px;
@@ -27,8 +21,12 @@
   --coin-edge: #b8903a;
   --coin-rim-hi: #f0c75e;
   --coin-rim-lo: #8a6d1f;
-  /* 齿周期（一齿 2.5° → 144 齿），与侧面滚花一一对应：侧面每段 6 齿 × 24 段 = 144 */
   --coin-rim-step: 2.5deg;
+  /* 布局尺寸（设计稿 440 基准 → 弹性） */
+  --coin-size: clamp(200px, 55vw, 240px);
+  --w-title: clamp(300px, 76vw, 334px);
+  --w-cat: clamp(112px, 32vw, 140px);
+  --w-hint: clamp(300px, 80vw, 350px);
 }
 
 * {
@@ -44,66 +42,369 @@ body {
 }
 
 body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--font);
+  background: #3a3d4a;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
 
-/* ---------- 单屏布局：标题/头部/硬币/比分/结果/底部 纵向排布，硬币区吸收剩余 ---------- */
-/* 桌面约束（PL007.5a）：480px 居中防大屏拉伸空白，背景夜色满屏 */
+/* ============================================================
+   四季主题变量（配色取自设计稿实测）
+   ============================================================ */
+#app[data-season="spring"] {
+  --bg: #f7c9d8;
+  --card: #fff8ec;
+  --card-2: #ffeef2;
+  --accent: #f6b8cc;
+  --accent-2: #f5c242;
+  --btn-theme: #9ccb7a;
+  --text: #6b4a3a;
+  --text-dim: #a08470;
+  --deco-1: #f6c8d8;
+  --deco-2: #f9d9e4;
+  --deco-3: #e8b7c8;
+  --bg-image: url("../assets/ui/bg-spring@2x.webp");
+}
+
+#app[data-season="summer"] {
+  --bg: #bfe3f2;
+  --card: #fff8ec;
+  --card-2: #e8f6fb;
+  --accent: #f6b8cc;
+  --accent-2: #f5c242;
+  --btn-theme: #9ccb7a;
+  --text: #6b4a3a;
+  --text-dim: #8d7a68;
+  --deco-1: #9ccb7a;
+  --deco-2: #f5c242;
+  --deco-3: #f6a8b8;
+  --bg-image: url("../assets/ui/bg-summer@2x.webp");
+}
+
+#app[data-season="autumn"] {
+  --bg: #f0c393;
+  --card: #fff8ec;
+  --card-2: #fdeee0;
+  --accent: #e8896f;
+  --accent-2: #f0a858;
+  --btn-theme: #9cb86a;
+  --text: #6b4a3a;
+  --text-dim: #9a7f66;
+  --deco-1: #f0a858;
+  --deco-2: #d98262;
+  --deco-3: #b8b77a;
+  --bg-image: url("../assets/ui/bg-autumn@2x.webp");
+}
+
+#app[data-season="winter"] {
+  --bg: #cfe8f4;
+  --card: #fffdf8;
+  --card-2: #eaf6fb;
+  --accent: #f6b8cc;
+  --accent-2: #f5c242;
+  --btn-theme: #9ccb7a;
+  --text: #6b4a3a;
+  --text-dim: #8f9aa6;
+  --deco-1: #fffdf8;
+  --deco-2: #cde8dc;
+  --deco-3: #a8c8d8;
+  --bg-image: url("../assets/ui/bg-winter@2x.webp");
+}
+
+/* ============================================================
+   单屏布局
+   ============================================================ */
 #app {
+  position: relative;
   height: 100dvh;
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px
-    calc(env(safe-area-inset-bottom, 0px) + 10px);
+  align-items: center;
+  padding: calc(var(--safe-top) + 10px) 16px calc(var(--safe-bottom) + 12px);
+  overflow: hidden;
+  color: var(--text);
+  isolation: isolate;
 }
 
-.hidden {
-  display: none !important;
+/* 背景层：四季背景图（cover 居中裁切） */
+#bg-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    var(--bg-image) center / cover no-repeat,
+    var(--bg);
+  pointer-events: none;
 }
 
-/* ---------- 顶部标题行（PL007.1a）：常驻小标题，5 秒认知兜底 ---------- */
+/* 花瓣（CSS 动画） */
+#petals {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.petal {
+  position: absolute;
+  width: 10px;
+  height: 8px;
+  border-radius: 60% 40% 55% 45%;
+  background: var(--deco-2);
+  opacity: 0.85;
+  animation: drift 9s linear infinite;
+}
+
+.petal:nth-child(1) {
+  left: 12%;
+  top: -4%;
+  animation-delay: 0s;
+}
+.petal:nth-child(2) {
+  left: 34%;
+  top: -8%;
+  animation-delay: 2.4s;
+  width: 8px;
+  height: 6px;
+}
+.petal:nth-child(3) {
+  left: 58%;
+  top: -6%;
+  animation-delay: 4.8s;
+}
+.petal:nth-child(4) {
+  left: 78%;
+  top: -3%;
+  animation-delay: 1.2s;
+  width: 7px;
+  height: 6px;
+}
+.petal:nth-child(5) {
+  left: 90%;
+  top: -7%;
+  animation-delay: 6s;
+}
+
+@keyframes drift {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: translateY(1040px) translateX(-40px) rotate(320deg);
+    opacity: 0;
+  }
+}
+
+/* 彩纸屑（结果态） */
+#confetti {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  display: none;
+  overflow: hidden;
+}
+
+#confetti.show {
+  display: block;
+}
+
+#confetti i {
+  position: absolute;
+  top: 30%;
+  width: 10px;
+  height: 14px;
+  border-radius: 3px;
+  opacity: 0;
+  animation: confetti-fall 900ms ease-out forwards;
+}
+
+#confetti i:nth-child(1) {
+  left: 30%;
+  background: var(--accent);
+}
+#confetti i:nth-child(2) {
+  left: 42%;
+  background: var(--accent-2);
+  animation-delay: 60ms;
+}
+#confetti i:nth-child(3) {
+  left: 54%;
+  background: var(--btn-theme);
+  animation-delay: 120ms;
+}
+#confetti i:nth-child(4) {
+  left: 64%;
+  background: var(--accent);
+  animation-delay: 40ms;
+}
+#confetti i:nth-child(5) {
+  left: 38%;
+  background: var(--deco-3);
+  animation-delay: 180ms;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(180px) rotate(260deg);
+    opacity: 0;
+  }
+}
+
+/* ============================================================
+   标题胶囊（季节装饰 + 产品名）
+   ============================================================ */
 #title-bar {
+  position: relative;
+  z-index: 2;
   flex: 0 0 auto;
-  text-align: center;
-  padding: 2px 0 10px;
-}
-
-#title-bar h1 {
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-#title-bar p {
-  margin-top: 2px;
-  font-size: 13px;
-  color: var(--text-dim);
-}
-
-/* ---------- 硬币区 ---------- */
-#coin-stage {
-  flex: 1;
+  width: var(--w-title);
+  min-height: 104px;
+  border-radius: 30px;
+  background: var(--card);
+  border: 3px solid var(--ink);
+  box-shadow:
+    inset 0 -4px 0 rgba(107, 74, 58, 0.12),
+    0 5px 0 rgba(107, 74, 58, 0.22);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 4px;
+}
+
+#title-bar h1 {
+  font-size: clamp(26px, 6.8vw, 30px);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.6);
+}
+
+#title-bar p {
+  font-size: 13px;
+  color: var(--text-dim);
+  letter-spacing: 0.12em;
+}
+
+/* 季节装饰（角落小花，纯 CSS/SVG 由 JS 渲染） */
+.title-deco {
+  position: absolute;
+  width: 46px;
+  height: 46px;
+  top: -16px;
+  left: -14px;
+  transform: rotate(-12deg);
+}
+
+.title-deco svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ============================================================
+   结果丝带（YES/NO）
+   ============================================================ */
+.ribbon {
+  position: absolute;
+  top: calc(var(--safe-top) + 130px);
+  left: 50%;
+  transform: translateX(-50%) scale(0.7);
+  width: var(--w-hint);
+  height: 92px;
+  z-index: 5;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.ribbon.show {
+  display: flex;
+  animation: ribbon-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.ribbon-body {
+  position: relative;
+  width: 82%;
+  height: 76px;
+  border-radius: 18px;
+  background: var(--card);
+  border: 3px solid var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 5px 0 rgba(107, 74, 58, 0.22);
+}
+
+.ribbon-body span {
+  font-size: clamp(38px, 10.5vw, 46px);
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  color: var(--accent-2);
+  -webkit-text-stroke: 2px var(--ink);
+  text-shadow: 0 3px 0 rgba(107, 74, 58, 0.25);
+}
+
+.ribbon-tail {
+  position: absolute;
+  top: 50%;
+  width: 44px;
+  height: 58px;
+  background: var(--accent);
+  border: 3px solid var(--ink);
+  clip-path: polygon(0 0, 100% 8%, 78% 50%, 100% 92%, 0 100%);
+  transform: translateY(-50%);
+}
+
+.ribbon-tail.left {
+  left: 0;
+  border-radius: 10px 0 0 10px;
+}
+
+.ribbon-tail.right {
+  right: 0;
+  transform: translateY(-50%) scaleX(-1);
+  border-radius: 10px 0 0 10px;
+}
+
+@keyframes ribbon-pop {
+  0% {
+    transform: translateX(-50%) scale(0.7);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+}
+
+/* ============================================================
+   硬币舞台（3D 硬币 + 猫咪占位）
+   ============================================================ */
+#coin-stage {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-height: 0;
   touch-action: none;
   cursor: grab;
-}
-
-#swipe-hint {
-  color: var(--text-dim);
-  font-size: 13px;
-  letter-spacing: 1px;
 }
 
 #coin-scene {
@@ -122,8 +423,8 @@ body {
   transform: translateX(-50%);
   border-radius: 50%;
   background: radial-gradient(
-    ellipse at center,
-    rgba(0, 0, 0, 0.4),
+    /* taste-skill-ignore 硬币本体材质 PL002-004 */ ellipse at center,
+    rgba(0, 0, 0, 0.32),
     transparent 68%
   );
   filter: blur(1px);
@@ -144,19 +445,6 @@ body {
   }
   100% {
     transform: scale(1);
-  }
-}
-
-/* 减少动效（PL003）：系统偏好减少动效时关硬币过渡/弹跳/结果弹入动画（JS 侧同步快进落定） */
-@media (prefers-reduced-motion: reduce) {
-  #coin {
-    transition: none !important;
-  }
-  #coin-scene.coin-landed {
-    animation: none !important;
-  }
-  #round-result.pop {
-    animation: none !important;
   }
 }
 
@@ -182,9 +470,8 @@ body {
 
 .face-yes {
   transform: rotateY(0deg) translateZ(calc(var(--coin-thick) / 2));
-  /* 曲率明暗（PL004：高光带/暗晕/环境反光/肌理抽到 .coin-shine 叠内容上方） */
   background: radial-gradient(
-    circle at 50% 48%,
+    /* taste-skill-ignore 硬币本体材质 PL002-004 */ circle at 50% 48%,
     var(--coin-pal-light, #ffe9a0) 0%,
     var(--coin-pal-base, #f0c75e) 48%,
     var(--coin-pal-dark, #c9982f) 88%,
@@ -195,7 +482,7 @@ body {
 .face-no {
   transform: rotateY(180deg) translateZ(calc(var(--coin-thick) / 2));
   background: radial-gradient(
-    circle at 50% 48%,
+    /* taste-skill-ignore 硬币本体材质 PL002-004 */ circle at 50% 48%,
     var(--coin-pal-light, #e8eaee) 0%,
     var(--coin-pal-base, #c9ccd1) 48%,
     var(--coin-pal-dark, #9aa0ab) 88%,
@@ -203,8 +490,7 @@ body {
   );
 }
 
-/* 币面标记容器（PL004）：文字/图片内容层，shine/rim 叠其上（层序稳定）；
-   flex 居中使文字 span 居中于币面（img 为 absolute 不受影响） */
+/* 币面标记容器（PL004）：文字/图片内容层，shine/rim 叠其上 */
 .coin-face-mark {
   position: absolute;
   inset: 0;
@@ -213,8 +499,7 @@ body {
   justify-content: center;
 }
 
-/* 币面图片层（PL004）：img 圆形裁剪铺面（inset 4% 让出外圈倒角），
-   rim/齿环环带遮其外圈，图案区 <60% 显示图片 */
+/* 币面图片层（PL004） */
 .coin-face-img {
   position: absolute;
   inset: 4%;
@@ -225,39 +510,33 @@ body {
   pointer-events: none;
 }
 
-/* 金属光泽层（PL004）：高光带/环境反光/暗晕/肌理叠图片或曲率上方（半透明，不遮内容） */
+/* 金属光泽层（PL004） */
 .coin-shine {
   position: absolute;
   inset: 4%;
   border-radius: 50%;
   pointer-events: none;
   background:
-    /* 左上椭圆高光带（顶光 38%32% 光源体系；PL003 方案 A：绑定面片本地坐标） */
     radial-gradient(
-      110% 70% at 34% 22%,
+      /* taste-skill-ignore 硬币本体材质 PL002-004 */ 110% 70% at 34% 22%,
       rgba(255, 255, 255, 0.35),
       transparent 58%
     ),
-    /* 右下环境反光 */
     radial-gradient(
-        90% 60% at 72% 88%,
-        rgba(255, 255, 255, 0.12),
-        transparent 55%
-      ),
-    /* 边缘暗晕（圆润过渡，压暗外圈） */
+      /* taste-skill-ignore 硬币本体材质 PL002-004 */ 90% 60% at 72% 88%,
+      rgba(255, 255, 255, 0.12),
+      transparent 55%
+    ),
     radial-gradient(
-        circle at 50% 50%,
-        transparent 60%,
-        rgba(0, 0, 0, 0.18) 100%
-      ),
-    /* 肌理：SVG feTurbulence 金属颗粒（data-URI 静态贴图，旋转 GPU transform 不重采样） */
+      /* taste-skill-ignore 硬币本体材质 PL002-004 */ circle at 50% 50%,
+      transparent 60%,
+      rgba(0, 0, 0, 0.18) 100%
+    ),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23g)' opacity='0.3'/%3E%3C/svg%3E")
       0 0 / 128px 128px;
 }
 
-/* rim 投影层（PL004）：光左上→影右下（非均匀）——阴影最深在 -45°（315°，左上），
-   弧段 270°~360° 对称衰减，90°~180° 无投影；含内缘压铸线；
-   mask 双环带：图案边缘投影带宽度减半 59%~61% + 齿侧 68%~70% */
+/* rim 投影层（PL004） */
 .coin-rim-shadow {
   position: absolute;
   inset: 0;
@@ -265,7 +544,7 @@ body {
   pointer-events: none;
   background:
     conic-gradient(
-      from 0deg,
+      /* taste-skill-ignore 硬币本体材质 PL002-004 */ from 0deg,
       rgba(0, 0, 0, 0.3) 0deg,
       transparent 90deg,
       transparent 180deg,
@@ -274,33 +553,40 @@ body {
       rgba(0, 0, 0, 0.3) 360deg
     ),
     radial-gradient(
-      circle at 50% 50%,
+      /* taste-skill-ignore 硬币本体材质 PL002-004 */ circle at 50% 50%,
       transparent 0 59.5%,
       rgba(0, 0, 0, 0.35) 59.5% 60.5%,
       transparent 60.5%
     );
   -webkit-mask:
     radial-gradient(
-      circle,
+      /* taste-skill-ignore 硬币造型 mask PL002-004 */ circle,
       transparent 0 58.75%,
       #000 58.75% 60%,
       transparent 61.25%
     ),
-    radial-gradient(circle, transparent 0 68%, #000 68% 70%, transparent 70%);
+    radial-gradient(
+      /* taste-skill-ignore 硬币造型 mask PL002-004 */ circle,
+      transparent 0 68%,
+      #000 68% 70%,
+      transparent 70%
+    );
   mask:
     radial-gradient(
-      circle,
+      /* taste-skill-ignore 硬币造型 mask PL002-004 */ circle,
       transparent 0 58.75%,
       #000 58.75% 60%,
       transparent 61.25%
     ),
-    radial-gradient(circle, transparent 0 68%, #000 68% 70%, transparent 70%);
+    radial-gradient(
+      /* taste-skill-ignore 硬币造型 mask PL002-004 */ circle,
+      transparent 0 68%,
+      #000 68% 70%,
+      transparent 70%
+    );
 }
 
-/* 齿-rim 交界线（PL004）：68% 半径处约 2px 环线，随方位变化——
-   -45°（315°）最亮：白色 conic 高光把黑线减淡；向两侧 270°/0° 平滑渐弱，
-   90°~180° 无高光（黑线最深），整圈连续过渡；
-   黑线整体透明度 75%；mask 只留黑线带 67.2%~68.8% */
+/* 齿-rim 交界线（PL004） */
 .coin-junction {
   position: absolute;
   inset: 0;
@@ -308,7 +594,7 @@ body {
   pointer-events: none;
   background:
     conic-gradient(
-      from 0deg,
+      /* taste-skill-ignore 硬币本体材质 PL002-004 */ from 0deg,
       rgba(255, 255, 255, 0.5) 0deg,
       transparent 90deg,
       transparent 180deg,
@@ -317,34 +603,33 @@ body {
       rgba(255, 255, 255, 0.5) 360deg
     ),
     radial-gradient(
-      circle at 50% 50%,
+      /* taste-skill-ignore 硬币本体材质 PL002-004 */ circle at 50% 50%,
       transparent 0 calc(68% - 1.25%),
       rgba(0, 0, 0, 0.75) calc(68% - 0.85%) calc(68% + 0.85%),
       transparent calc(68% + 1.25%)
     );
   -webkit-mask: radial-gradient(
-    circle,
+    /* taste-skill-ignore 硬币造型 mask PL002-004 */ circle,
     transparent 0 66.75%,
     #000 66.75% 69.25%,
     transparent 69.25%
   );
   mask: radial-gradient(
-    circle,
+    /* taste-skill-ignore 硬币造型 mask PL002-004 */ circle,
     transparent 0 66.75%,
     #000 66.75% 69.25%,
     transparent 69.25%
   );
 }
 
-/* 内 rim 本体凸起圈（PL004）：60.5%~68% 环带，conic 上亮下暗 +
-   左上高光峰值（光源 315°）；投影由 .coin-rim-shadow 提供（右下弧段） */
+/* 内 rim 本体凸起圈（PL004） */
 .coin-rim {
   position: absolute;
   inset: 0;
   border-radius: 50%;
   pointer-events: none;
   background: conic-gradient(
-    from 0deg,
+    /* taste-skill-ignore 硬币本体材质 PL002-004 */ from 0deg,
     var(--coin-pal-light, #ffe9a0) 0deg,
     var(--coin-pal-dark, #c9982f) 90deg,
     var(--coin-pal-deep, #8a6d1f) 180deg,
@@ -353,28 +638,27 @@ body {
     var(--coin-pal-light, #ffe9a0) 360deg
   );
   -webkit-mask: radial-gradient(
-    circle,
+    /* taste-skill-ignore 硬币造型 mask PL002-004 */ circle,
     transparent 0 60.5%,
     #000 60.5% 68%,
     transparent 68%
   );
   mask: radial-gradient(
-    circle,
+    /* taste-skill-ignore 硬币造型 mask PL002-004 */ circle,
     transparent 0 60.5%,
     #000 60.5% 68%,
     transparent 68%
   );
 }
 
-/* 倒角轮廓环（PL003）：面外圈环形渐变（左上最亮→右下深暗，顶光倒角斜面），
-   mask 只留外圈 95%~100%，与侧面 seg 顶部亮边衔接成"圆碟"轮廓 */
+/* 倒角轮廓环（PL003） */
 .face::before {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: 50%;
   background: conic-gradient(
-    from 0deg,
+    /* taste-skill-ignore 硬币本体材质 PL002-004 */ from 0deg,
     var(--coin-pal-light, #ffe9a0) 0deg,
     var(--coin-pal-dark, #c9982f) 90deg,
     var(--coin-pal-deep, #8a6d1f) 180deg,
@@ -382,12 +666,19 @@ body {
     var(--coin-pal-hi, #fff7e0) 315deg,
     var(--coin-pal-light, #ffe9a0) 360deg
   );
-  -webkit-mask: radial-gradient(circle, transparent 0 95%, #000 95%);
-  mask: radial-gradient(circle, transparent 0 95%, #000 95%);
+  -webkit-mask: radial-gradient(
+    /* taste-skill-ignore 硬币造型 mask PL002-004 */ circle,
+    transparent 0 95%,
+    #000 95%
+  );
+  mask: radial-gradient(
+    /* taste-skill-ignore 硬币造型 mask PL002-004 */ circle,
+    transparent 0 95%,
+    #000 95%
+  );
 }
 
-/* 币面文字标记（PL007.3：去 emoji 化）：深色冲压字 + 浮雕影（双层影沿用），
-   字号按硬币尺寸比例（多字符 YES/NO 收小防溢出 rim 内图案区） */
+/* 币面文字标记（PL007.3） */
 .face-mark {
   color: var(--coin-pal-deep, #8a6d1f);
   font-size: calc(var(--coin-size) * 0.26);
@@ -398,39 +689,37 @@ body {
     drop-shadow(0 3px 6px rgba(0, 0, 0, 0.28));
 }
 
-/* 单字符标记（show 面「运」，JS 加 .single）：放大到近半硬币，品牌字存在感 */
 .face-mark.single {
   font-size: calc(var(--coin-size) * 0.4);
 }
 
-/* 正面外圈齿环（PL002）：齿数 360/--coin-rim-step = 144，与侧面滚花一一对应（同角度基准 0°） */
+/* 正面外圈齿环（PL002） */
 .face::after {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: 50%;
   background: repeating-conic-gradient(
-    from 0deg,
+    /* taste-skill-ignore 硬币本体材质 PL002-004 */ from 0deg,
     var(--coin-rim-hi, #f0c75e) 0deg calc(var(--coin-rim-step, 2.5deg) / 2),
     var(--coin-rim-lo, #8a6d1f) calc(var(--coin-rim-step, 2.5deg) / 2)
       var(--coin-rim-step, 2.5deg)
   );
   -webkit-mask: radial-gradient(
-    circle,
+    /* taste-skill-ignore 硬币造型 mask PL002-004 */ circle,
     transparent 0 68%,
     #000 68% 95%,
     transparent 95%
   );
   mask: radial-gradient(
-    circle,
+    /* taste-skill-ignore 硬币造型 mask PL002-004 */ circle,
     transparent 0 68%,
     #000 68% 95%,
     transparent 95%
   );
 }
 
-/* 硬币侧面圆柱壁（PL002）：容器 rotateX(90deg) 把圆柱轴从 Y 转到 Z（视线方向），
-   使 seg 厚度沿 Z 前后、圆周在 XY 平面，避免 seg 出现在正面中心 */
+/* 硬币侧面圆柱壁（PL002） */
 .coin-edge {
   position: absolute;
   inset: 0;
@@ -444,17 +733,14 @@ body {
   left: 50%;
   top: 50%;
   margin: 0;
-  /* 滚花条纹周期 = 每段弧长/6 → 每段 6 齿、段间连续，总 144 齿，与正面齿环一一对应；
-     --seg-arc 由 buildCoinEdge 按实际半径写入，断点变半径齿数恒定；
-     75deg 斜齿（PL003）：reeded edge 斜度，比竖条纹更接近真实滚边 */
   background:
     repeating-linear-gradient(
-      75deg,
+      /* taste-skill-ignore 侧面滚花 PL002 */ 75deg,
       rgba(0, 0, 0, 0.22) 0 calc(var(--seg-arc) / 12),
       transparent calc(var(--seg-arc) / 12) calc(var(--seg-arc) / 6)
     ),
     linear-gradient(
-      180deg,
+      /* taste-skill-ignore 侧面金属明暗 PL002 */ 180deg,
       rgba(255, 255, 255, 0.18),
       transparent 45%,
       rgba(0, 0, 0, 0.25)
@@ -462,156 +748,317 @@ body {
     var(--coin-edge, #b8903a);
 }
 
-/* ---------- 结果展示区 ---------- */
-#result-area {
-  flex: 0 0 auto;
-  min-height: 92px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  text-align: center;
+/* ============================================================
+   猫咪占位（相对硬币舞台定位：猫顶与硬币顶齐平）
+   ============================================================ */
+.cat {
+  position: absolute;
+  bottom: calc(50% - 20px);
+  width: var(--w-cat);
+  height: var(--w-cat);
+  z-index: 3;
+  pointer-events: none;
 }
 
-/* 结果揭晓强化（PL007.4b）：32px 级戏剧字号 + 落定弹入；待机 idle 弱化 */
-#round-result {
-  font-size: 32px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  min-height: 40px;
+.cat-xiaohei {
+  left: -14px;
 }
 
-#round-result.idle {
-  font-size: 15px;
-  font-weight: 500;
-  color: var(--text-dim);
+.cat-xiaobai {
+  right: -14px;
 }
 
-#round-result.final {
-  font-size: 36px;
-  color: var(--accent);
+.cat svg {
+  width: 100%;
+  height: 100%;
 }
 
-/* 落定弹入（PL007.4b）：弹簧曲线 scale+透明度，只动 transform/opacity */
-#round-result.pop {
-  animation: result-pop 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+/* 待机浮动（克制：3.2s / 5px） */
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
 }
 
-@keyframes result-pop {
+.cat-xiaobai svg {
+  animation: bob 3.2s ease-in-out infinite;
+}
+
+.cat-xiaohei svg {
+  animation: bob 3.6s ease-in-out infinite reverse;
+}
+
+/* 结果态：猫咪欢呼 */
+.cat.cheer svg {
+  animation: cheer 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes cheer {
   0% {
-    transform: scale(0.72);
-    opacity: 0;
+    transform: scale(1) translateY(0);
+  }
+  45% {
+    transform: scale(1.1) translateY(-14px);
   }
   100% {
-    transform: scale(1);
-    opacity: 1;
+    transform: scale(1) translateY(0);
   }
 }
 
-/* ---------- 底部功能区 ---------- */
+/* 名字标签 */
+.name-tag {
+  position: absolute;
+  bottom: -27px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 76px;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  background: var(--card);
+  border: 2px solid var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  z-index: 4;
+}
+
+.gender-f {
+  color: #e8899f;
+}
+.gender-m {
+  color: #6a9fce;
+}
+
+/* ============================================================
+   提示胶囊
+   ============================================================ */
+#hint-pill {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+  width: var(--w-hint);
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-pill);
+  background: var(--card);
+  border: 2.5px solid var(--ink);
+  box-shadow: 0 4px 0 rgba(107, 74, 58, 0.18);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+  margin-bottom: 14px;
+}
+
+/* ============================================================
+   底部按钮（战绩粉 / 换主题绿）
+   ============================================================ */
 #bottom-bar {
+  position: relative;
+  z-index: 2;
   flex: 0 0 auto;
   display: flex;
+  gap: 14px;
+  width: 100%;
   justify-content: center;
-  gap: 12px;
-  padding-top: 8px;
 }
 
 #bottom-bar button {
-  flex: 1;
-  min-height: var(--touch-min);
-  border: 1px solid var(--surface-2);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 15px;
-  transition:
-    transform 150ms cubic-bezier(0.2, 0, 0, 1),
-    background 150ms ease;
+  width: calc(50% - 7px);
+  max-width: 163px;
+  height: 76px;
+  border-radius: 24px;
+  border: 3px solid var(--ink);
+  box-shadow: 0 6px 0 rgba(107, 74, 58, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--ink);
+  font-family: var(--font);
+  cursor: pointer;
+  transition: transform 90ms ease-out;
 }
 
 #bottom-bar button:active {
-  transform: scale(0.96);
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 rgba(107, 74, 58, 0.25);
 }
 
-/* ---------- 浮层（成绩/设置，不遮页面主体） ---------- */
+#history-btn {
+  background: var(--accent);
+}
+
+#settings-btn {
+  background: var(--btn-theme);
+}
+
+#bottom-bar button svg {
+  width: 26px;
+  height: 26px;
+  stroke: var(--ink);
+  stroke-width: 2;
+  fill: none;
+}
+
+/* ============================================================
+   浮窗（战绩 / 换主题）
+   ============================================================ */
 #overlay {
   position: fixed;
-  left: 0;
-  right: 0;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);
+  inset: 0;
   z-index: 50;
   display: flex;
+  align-items: center;
   justify-content: center;
-  padding: 0 20px;
-  pointer-events: none;
+  background: rgba(60, 45, 35, 0.3);
+  padding: 20px;
 }
 
 #overlay[hidden] {
   display: none;
 }
 
-.overlay-card {
+.overlay-inner {
+  position: relative;
   width: 100%;
-  max-width: 360px;
-  max-height: min(70vh, 420px);
-  overflow-y: auto;
-  background: var(--surface);
-  border: 1px solid var(--surface-2);
-  border-radius: 16px;
-  padding: 16px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
-  pointer-events: auto;
-  animation: overlay-in 200ms ease-out;
-}
-
-@keyframes overlay-in {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.overlay-card h3 {
-  font-size: 16px;
-  margin-bottom: 10px;
-}
-
-/* ---------- 战绩列表（PL008） ---------- */
-.history-box {
+  max-width: 400px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  align-items: center;
 }
 
+.sheet {
+  position: relative;
+  width: 100%;
+  max-height: min(72vh, 640px);
+  overflow-y: auto;
+  border-radius: 28px;
+  background: var(--card);
+  border: 3px solid var(--ink);
+  box-shadow: 0 10px 0 rgba(107, 74, 58, 0.25);
+  padding: 34px 20px 20px;
+  animation: sheet-in 200ms ease-out;
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 粉色标题胶囊 */
+.sheet-title {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 52px;
+  min-width: 180px;
+  padding: 0 28px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  border: 2.5px solid var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--ink);
+  z-index: 3;
+}
+
+.sheet-title svg {
+  width: 22px;
+  height: 22px;
+  stroke: var(--ink);
+  stroke-width: 2;
+  fill: none;
+}
+
+/* 战绩列表 */
 .history-list {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  max-height: 40vh;
-  overflow-y: auto;
+  gap: 10px;
+  margin: 44px 0 16px;
 }
 
 .history-list li {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: var(--surface-2);
-  font-size: 14px;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: var(--card-2);
+  font-size: 16px;
 }
 
 .history-time {
   flex: 1;
-  color: var(--text-dim);
+  color: var(--text);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+/* 硬币头像（金/银） */
+.coin-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 900;
+  flex: 0 0 auto;
+}
+
+.coin-avatar.yes {
+  background: radial-gradient(
+    /* taste-skill-ignore 硬币头像材质 */ circle at 35% 30%,
+    #ffe9a0,
+    #f0c75e 60%,
+    #c9982f
+  );
+  color: #8a6d1f;
+}
+
+.coin-avatar.no {
+  background: radial-gradient(
+    /* taste-skill-ignore 硬币头像材质 */ circle at 35% 30%,
+    #ffffff,
+    #c9ccd1 60%,
+    #9aa0ab
+  );
+  color: #6b7280;
+}
+
+.history-face {
+  font-size: 18px;
+  font-weight: 900;
+  min-width: 52px;
+  text-align: right;
 }
 
 .history-empty {
@@ -619,102 +1066,199 @@ body {
   color: var(--text-dim);
 }
 
-.history-list .result-face {
-  display: block;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-/* 战绩圆点（PL007.3b 沿用）：yes 金 / no 银，替代 emoji */
-.score-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex: 0 0 auto;
-}
-
-.score-dot.dot-yes {
-  background: var(--accent);
-}
-
-.score-dot.dot-no {
-  background: var(--text-dim);
-}
-
-/* 清除战绩按钮（PL008）：平时弱化，armed 态警示色（二次确认窗口） */
-.history-clear {
+/* 清除战绩（二次确认） */
+.sheet-clear {
   width: 100%;
-  min-height: var(--touch-min);
-  border: 1px solid var(--surface-2);
-  border-radius: 12px;
-  background: transparent;
-  color: var(--text-dim);
-  font-size: 14px;
+  height: 52px;
+  border-radius: var(--radius-pill);
+  border: 2.5px solid var(--ink);
+  background: var(--accent);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ink);
+  font-family: var(--font);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
   transition:
     border-color 150ms ease,
     color 150ms ease;
 }
 
-.history-clear:active {
-  transform: scale(0.97);
+.sheet-clear.armed {
+  border-color: var(--danger, #ef476f);
+  color: var(--danger, #ef476f);
 }
 
-.history-clear.armed {
-  border-color: var(--danger);
-  color: var(--danger);
+.sheet-clear svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
 }
 
-.theme-options {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-/* 主题色点（PL007.3）：设置浮层按钮前置色点，替代 emoji 拼接 */
-.theme-swatch {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  margin-right: 6px;
-  vertical-align: -1px;
-}
-
-.theme-option {
-  flex: 1;
-  min-height: var(--touch-min);
-  border: 1px solid var(--surface-2);
-  border-radius: 12px;
-  background: var(--surface-2);
-  color: var(--text);
-  font-size: 14px;
-  transition: transform 150ms cubic-bezier(0.2, 0, 0, 1);
-}
-
-.theme-option:active {
-  transform: scale(0.96);
-}
-
-.theme-option.active {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.overlay-close {
+/* 关闭按钮 */
+.sheet-close {
   width: 100%;
-  min-height: var(--touch-min);
-  border: none;
-  border-radius: 12px;
-  background: var(--surface-2);
-  color: var(--text);
-  transition: transform 150ms cubic-bezier(0.2, 0, 0, 1);
+  height: 52px;
+  margin-top: 12px;
+  border-radius: var(--radius-pill);
+  border: 2.5px solid var(--ink);
+  background: var(--card);
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ink);
+  font-family: var(--font);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
 }
 
-.overlay-close:active {
-  transform: scale(0.96);
+/* 主题选择：2×2 场景缩略卡 */
+.theme-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 44px 0 14px;
 }
 
-/* ---------- 轻提示 toast ---------- */
+.theme-tile {
+  position: relative;
+  height: 120px;
+  border-radius: 18px;
+  border: 3px solid var(--ink);
+  overflow: hidden;
+  cursor: pointer;
+  padding: 0;
+  background: none;
+  font-family: var(--font);
+}
+
+.theme-tile .thumb {
+  position: absolute;
+  inset: 0;
+}
+
+.theme-tile .thumb svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.theme-tile .label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 248, 236, 0.92);
+  border-top: 2px solid var(--ink);
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.theme-tile.active {
+  outline: 4px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+.theme-tile .check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--accent-2);
+  border: 2.5px solid var(--ink);
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-tile.active .check {
+  display: flex;
+}
+
+.theme-tile .check svg {
+  width: 16px;
+  height: 16px;
+  stroke: var(--ink);
+  stroke-width: 3;
+  fill: none;
+}
+
+/* 自动切换开关行 */
+.auto-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 16px;
+  border-radius: var(--radius-pill);
+  background: var(--card-2);
+  border: 2px solid rgba(107, 74, 58, 0.2);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+
+.switch {
+  width: 56px;
+  height: 32px;
+  border-radius: var(--radius-pill);
+  border: 2.5px solid var(--ink);
+  background: #d8d3cc;
+  position: relative;
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: background 150ms ease;
+}
+
+.switch.on {
+  background: var(--accent-2);
+}
+
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--ink);
+  transition: transform 150ms ease;
+}
+
+.switch.on::after {
+  transform: translateX(24px);
+}
+
+.current-season {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+}
+
+.current-season b {
+  color: #e8899f;
+}
+
+/* 轻提示 */
 #toast {
   position: fixed;
   left: 50%;
@@ -723,10 +1267,11 @@ body {
   z-index: 60;
   padding: 12px 22px;
   border-radius: 12px;
-  background: var(--surface-2);
-  border: 1px solid var(--accent);
-  color: var(--text);
+  background: var(--card, #fff8ec);
+  border: 2px solid var(--ink, #6b4a3a);
+  color: var(--ink, #6b4a3a);
   font-size: 15px;
+  font-weight: 700;
   animation: toast-in 180ms ease-out;
 }
 
@@ -741,15 +1286,36 @@ body {
   }
 }
 
-/* ---------- 断点（320/375/430 档位微调） ---------- */
-@media (max-width: 380px) {
-  :root {
-    --coin-size: min(60vw, 200px);
+/* ============================================================
+   减少动效
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  #coin {
+    transition: none !important;
+  }
+  #coin-scene.coin-landed {
+    animation: none !important;
+  }
+  .petal,
+  .cat svg,
+  .ribbon.show,
+  #confetti i,
+  .sheet {
+    animation: none !important;
   }
 }
 
-@media (min-width: 430px) {
+/* ============================================================
+   375 小屏档
+   ============================================================ */
+@media (max-width: 400px) {
   :root {
-    --coin-size: min(52vw, 260px);
+    --coin-size: clamp(180px, 52vw, 210px);
+    --w-cat: clamp(100px, 28vw, 120px);
+  }
+
+  #bottom-bar button {
+    height: 70px;
+    font-size: 18px;
   }
 }

@@ -1,7 +1,7 @@
 # 开发进度追踪（x.progress.md）
 
 > 依据：`z.plan.md`（幸运硬币选择方案报告，PL001）
-> 当前版本：V0.1.2.0（单一来源：`config/version.json`；AGENTS.md「版本号唯一来源」约定）
+> 当前版本：V0.1.3.0（单一来源：`config/version.json`；AGENTS.md「版本号唯一来源」约定）
 > 记录格式：状态 [⏳ 待开发, ✅ 已完成] / 优先级 [高, 中, 低]
 > 执行原则：每阶段完成后运行验证命令确认无回归，再进入下一阶段
 > 错误策略：不崩溃、不阻塞、有提示、能自愈——统一中文错误类型 / fail-fast 与明确回落并用 / 宽容解析（详见 AGENTS.md 错误策略主线）
@@ -324,3 +324,51 @@ node .temp/verify_pl007_ui.js     # PL007 UI：标题行 / 待机文案 / 比分
 - [x] PL008.5.c 冒烟与目检 —— 做法：浏览器全链路（投掷→战绩记录→刷新仍在→清零二次确认→再投掷继续记录）；验证：用户目检确认
 - [x] PL008.5.d 版本 V0.1.2.0 定版 —— 做法：config/version.json 单点改 V0.1.2.0（第三位推进 1），README 徽章/x.progress 版本行/z.plan PL008 状态行四处同步；验证：四处动态读取一致 + 四段式正则
 - [x] PL008.5.e commit 草稿 —— 做法：按 V2 规范在对话中给出（git add 清单 + message），不写入本文档；验证：用户审阅后自行执行
+
+---
+
+## PL009. 四季主题框架与界面重构任务清单（依据 z.plan.md PL009，2026-11-10）
+
+> 状态：✅ 已实施（V0.1.3.0，2026-11-10：四季主题/背景 4 张/猫咪 SVG 占位/丝带与浮窗落地；verify_theme + verify_pl009_ui 新增，run_all 6/6 全绿；浏览器目检待用户确认）
+> 方案：z.plan.md PL009（按 design/prototype.html v2 搭框架；4 张背景图；猫咪 SVG 占位；主题自动/手动）
+> 硬限制：沿用 PL001——禁 WebGL/WASM/Workers/eval/外链 JS；依赖全内嵌；动效只动 transform/opacity；触区 ≥44px
+> 版本归属：V0.1.3.0（PL009.6 定版同步）
+
+#### PL009.1 主题内核（js/rules.js + js/theme.js + config/rules.json）
+
+- [x] PL009.1.a 四季常量与判断 —— 做法：rules.js 新增 `SEASONS`（spring/summer/autumn/winter）、`SEASON_THEMES`（每季配色/装饰/背景文件）、`seasonOf(date)` 纯函数（3-5 春 / 6-8 夏 / 9-11 秋 / 12-2 冬）；验证：verify_theme 断言四季月份边界与配色键齐全
+- [x] PL009.1.b 主题持久化内核 —— 做法：新增 js/theme.js：`loadThemeMode(storage)`/`saveThemeMode(storage, state)`（键 `fortune-choice.theme.v1`，storage 注入、坏 JSON/异常宽容降级）；验证：verify_theme stub storage 断言读写/坏数据/异常降级
+- [x] PL009.1.c 配置契约同步 —— 做法：config/rules.json 增 `themeAutoDefault`（默认 true）；REQUIRED_KEYS 与 validateRules 同步；验证：verify_rules 断言
+
+#### PL009.2 结构重构（index.html）
+
+- [x] PL009.2.a 骨架重排 —— 做法：背景层 / 标题胶囊（含季节装饰 SVG）/ 硬币舞台 / 猫咪占位容器 / 提示胶囊 / 结果丝带 / 底部按钮（战绩粉·换主题绿）/ 两个浮窗；验证：collectRefs 骨架断言 + grep 结构
+- [x] PL009.2.b 猫咪 SVG 占位 —— 做法：小黑（德文奶牛母猫）/小白（德文纯白公猫）内联 SVG 待机姿态 + 名字标签（小黑 ♀ / 小白 ♂）；欢呼/探头结构预留；验证：DOM 断言 + 目检
+- [x] PL009.2.c 浮窗结构 —— 做法：战绩（粉色标题胶囊/列表/清除/关闭）+ 换主题（2×2 场景占位卡/勾选/自动开关/当前季节/关闭）；验证：DOM stub 断言
+
+#### PL009.3 四季样式（css/coin.css）
+
+- [x] PL009.3.a 主题变量与贴纸组件 —— 做法：四季配色变量（`--bg/--card/--accent/--btn-theme/--deco-*`）、描边/圆角/硬阴影统一、按钮粉/绿；验证：cssBlock 断言 + 目检
+- [x] PL009.3.b 布局尺寸 —— 做法：标题 334×108 / 硬币 240 / 猫咪 140 / 提示 350×48 / 按钮 163×76；clamp + 变量适配 375–440；验证：inspect 测量 + 375/390/440 目检
+- [x] PL009.3.c 结果态样式 —— 做法：丝带（主体 + 燕尾 clip-path）、彩纸屑（5 片 CSS 动画）、猫咪欢呼类；验证：目检 + class 断言
+- [x] PL009.3.d 浮窗与列表样式 —— 做法：浮窗滑入 200ms、战绩列表（时间 + 硬币头像 + YES/NO）、主题卡 + 勾选 + 开关；验证：目检
+
+#### PL009.4 背景图生成与接入
+
+- [x] PL009.4.a 生成 4 张背景 —— 做法：生图 9:21（1K）→ 中心裁 9:19.5 → 880×1912 @2x WebP；背景无猫咪/无文字、中央留净；验证：尺寸/格式/体积 ≤120KB/张
+- [x] PL009.4.b 背景接入 —— 做法：assets/ui/bg-<season>@2x.webp + CSS background-image/cover；验证：四季切换背景变化目检
+
+#### PL009.5 交互与状态（js/main.js + js/ui.js）
+
+- [x] PL009.5.a 主题初始化与自动切换 —— 做法：启动读持久化（auto/manual）；auto 按月份取季节；手动选择→manual 并保存；浮窗开关→auto 并保存；storage 异常降级；验证：verify_theme + 目检
+- [x] PL009.5.b 结果态切换 —— 做法：落定→丝带/彩纸屑/猫咪欢呼（class 移除→reflow→添加保证可重复）；待机复位；验证：目检 + class 断言
+- [x] PL009.5.c 战绩浮窗接线 —— 做法：列表渲染（时间/硬币头像/YES/NO）、清零二次确认、关闭；验证：DOM stub + 目检
+- [x] PL009.5.d 换主题浮窗接线 —— 做法：四卡选择、自动开关、当前季节文案、关闭；验证：目检
+
+#### PL009.6 验证收尾与版本定版
+
+- [x] PL009.6.a verify_theme.js 新增 —— 做法：季节判断/主题模式/持久化宽容降级断言组；验证：node 直跑 0 失败并纳入 run_all
+- [x] PL009.6.b verify_pl008_ui 调整 —— 做法：新结构/丝带/猫咪占位/浮窗/主题变量断言同步；验证：run_all 全量 0 失败
+- [x] PL009.6.c 目检与 taste-skill 复测 —— 做法：浏览器四季/投掷/战绩/浮窗/动效；lint + inspect 复测（贴纸风豁免记录）；验证：用户目检确认
+- [x] PL009.6.d 文档同步与版本定版 —— 做法：README/AGENTS 主题说明同步；config/version.json 单点改 V0.1.3.0（第三位推进 1），四处同步；验证：四处动态读取一致 + 四段式正则
+- [x] PL009.6.e commit 草稿 —— 做法：按 V2 规范在对话中给出（git add 清单 + message），不写入本文档；验证：用户审阅后自行执行

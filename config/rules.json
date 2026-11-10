@@ -10,5 +10,6 @@
   "resetFlipMs": 1400,
   "historyLimit": 1000,
   "clearConfirmMs": 3000,
-  "configVersion": "rules-v2"
+  "themeAutoDefault": true,
+  "configVersion": "rules-v3"
 }

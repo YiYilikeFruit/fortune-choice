@@ -10,37 +10,214 @@
     <link rel="stylesheet" href="css/coin.css" />
   </head>
   <body>
-    <main id="app">
-      <!-- 顶部标题行（PL007.1）：常驻小标题，5 秒认知兜底 -->
+    <main id="app" data-season="spring">
+      <!-- 背景层（PL009）：四季背景图由 CSS 变量按 data-season 切换 -->
+      <div id="bg-layer" aria-hidden="true"></div>
+
+      <!-- 飘落花瓣（纯 CSS 动画） -->
+      <div id="petals" aria-hidden="true">
+        <span class="petal"></span>
+        <span class="petal"></span>
+        <span class="petal"></span>
+        <span class="petal"></span>
+        <span class="petal"></span>
+      </div>
+
+      <!-- 彩纸屑（结果态） -->
+      <div id="confetti" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i>
+      </div>
+
+      <!-- 标题胶囊：季节装饰 + 产品名 -->
       <header id="title-bar" aria-label="应用标题">
+        <div class="title-deco" id="title-deco" aria-hidden="true"></div>
         <h1>幸运硬币</h1>
         <p>抛硬币，替你做决定</p>
       </header>
 
-      <!-- 硬币区（核心交互，占剩余空间） -->
+      <!-- 结果丝带（结果态显示） -->
+      <div id="ribbon" class="ribbon" aria-hidden="true">
+        <div class="ribbon-tail left"></div>
+        <div class="ribbon-body"><span id="ribbon-text">YES</span></div>
+        <div class="ribbon-tail right"></div>
+      </div>
+
+      <!-- 硬币舞台：3D 硬币（保留现有实现）+ 猫咪 SVG 占位 -->
       <section id="coin-stage" aria-label="硬币区">
-        <p id="swipe-hint">左右滑动 · 抛硬币</p>
         <div id="coin-scene">
           <div id="coin">
             <div class="face face-yes"></div>
             <div class="face face-no"></div>
           </div>
         </div>
+
+        <!-- 小黑：德文奶牛母猫（SVG 占位，后续替换位图） -->
+        <div class="cat cat-xiaohei" id="cat-xiaohei" aria-hidden="true">
+          <svg viewBox="0 0 200 200">
+            <ellipse
+              cx="100"
+              cy="176"
+              rx="52"
+              ry="12"
+              fill="rgba(107,74,58,0.16)"
+            />
+            <ellipse
+              cx="100"
+              cy="132"
+              rx="40"
+              ry="36"
+              fill="#fffdf8"
+              stroke="#6b4a3a"
+              stroke-width="4"
+            />
+            <path d="M76 116 q12 -12 24 0 q-4 20 -24 12 z" fill="#3a3330" />
+            <path d="M116 138 q12 -8 16 4 q-8 12 -16 0 z" fill="#3a3330" />
+            <circle
+              cx="100"
+              cy="76"
+              r="35"
+              fill="#fffdf8"
+              stroke="#6b4a3a"
+              stroke-width="4"
+            />
+            <path
+              d="M70 52 L62 20 L86 38 Z"
+              fill="#fffdf8"
+              stroke="#6b4a3a"
+              stroke-width="4"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M130 52 L138 20 L114 38 Z"
+              fill="#fffdf8"
+              stroke="#6b4a3a"
+              stroke-width="4"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M78 68 q8 -8 16 0"
+              stroke="#6b4a3a"
+              stroke-width="3.5"
+              fill="none"
+              stroke-linecap="round"
+            />
+            <path
+              d="M106 68 q8 -8 16 0"
+              stroke="#6b4a3a"
+              stroke-width="3.5"
+              fill="none"
+              stroke-linecap="round"
+            />
+            <path
+              d="M96 84 q4 4 8 0"
+              stroke="#6b4a3a"
+              stroke-width="3.5"
+              fill="none"
+              stroke-linecap="round"
+            />
+            <path
+              d="M84 44 q16 -10 32 0 q-8 12 -16 12 q-8 0 -16 -12 z"
+              fill="#3a3330"
+            />
+            <circle
+              cx="66"
+              cy="46"
+              r="7"
+              fill="#f6a8b8"
+              stroke="#6b4a3a"
+              stroke-width="2"
+            />
+          </svg>
+          <div class="name-tag">小黑 <span class="gender-f">♀</span></div>
+        </div>
+
+        <!-- 小白：德文纯白公猫（SVG 占位，后续替换位图） -->
+        <div class="cat cat-xiaobai" id="cat-xiaobai" aria-hidden="true">
+          <svg viewBox="0 0 200 200">
+            <ellipse
+              cx="100"
+              cy="176"
+              rx="50"
+              ry="11"
+              fill="rgba(107,74,58,0.14)"
+            />
+            <ellipse
+              cx="100"
+              cy="132"
+              rx="38"
+              ry="35"
+              fill="#fffdf8"
+              stroke="#6b4a3a"
+              stroke-width="4"
+            />
+            <circle
+              cx="100"
+              cy="76"
+              r="33"
+              fill="#fffdf8"
+              stroke="#6b4a3a"
+              stroke-width="4"
+            />
+            <path
+              d="M72 54 L64 24 L86 40 Z"
+              fill="#fffdf8"
+              stroke="#6b4a3a"
+              stroke-width="4"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M128 54 L136 24 L114 40 Z"
+              fill="#fffdf8"
+              stroke="#6b4a3a"
+              stroke-width="4"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M79 68 q8 -8 16 0"
+              stroke="#6b4a3a"
+              stroke-width="3.5"
+              fill="none"
+              stroke-linecap="round"
+            />
+            <path
+              d="M105 68 q8 -8 16 0"
+              stroke="#6b4a3a"
+              stroke-width="3.5"
+              fill="none"
+              stroke-linecap="round"
+            />
+            <path
+              d="M96 84 q4 4 8 0"
+              stroke="#6b4a3a"
+              stroke-width="3.5"
+              fill="none"
+              stroke-linecap="round"
+            />
+            <circle cx="100" cy="82" r="4.5" fill="#f6a8b8" />
+            <circle
+              cx="132"
+              cy="60"
+              r="5"
+              fill="#9ccb7a"
+              stroke="#6b4a3a"
+              stroke-width="2"
+            />
+          </svg>
+          <div class="name-tag">小白 <span class="gender-m">♂</span></div>
+        </div>
       </section>
 
-      <!-- 结果展示区 -->
-      <section id="result-area" aria-label="结果区">
-        <div id="round-result"></div>
-      </section>
+      <!-- 提示胶囊 -->
+      <p id="hint-pill">左右滑动 · 抛硬币</p>
 
-      <!-- 底部功能区（PL008：战绩记录 / 换硬币） -->
+      <!-- 底部按钮 -->
       <footer id="bottom-bar">
         <button type="button" id="history-btn">战绩</button>
-        <button type="button" id="settings-btn">换硬币</button>
+        <button type="button" id="settings-btn">换主题</button>
       </footer>
     </main>
 
-    <!-- 浮层容器（战绩/设置）与轻提示 -->
+    <!-- 浮层容器（战绩/换主题）与轻提示 -->
     <div id="overlay" hidden aria-hidden="true"></div>
     <div id="toast" hidden role="status"></div>
 

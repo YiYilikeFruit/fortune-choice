@@ -5,7 +5,7 @@
 // 关联配置：config/rules.json 是本文件契约的数据镜像。
 // ============================================================
 
-// 滑动/动画/战绩参数必填键：缺一即契约失败
+// 滑动/动画/战绩/主题参数必填键：缺一即契约失败
 export const REQUIRED_KEYS = [
   "idleTimeoutMs",
   "accelFactor",
@@ -18,7 +18,50 @@ export const REQUIRED_KEYS = [
   "resetFlipMs",
   "historyLimit",
   "clearConfirmMs",
+  "themeAutoDefault",
 ];
+
+// 四季枚举（PL009）：主题切换的单一权威声明
+export const SEASONS = Object.freeze({
+  SPRING: "spring",
+  SUMMER: "summer",
+  AUTUMN: "autumn",
+  WINTER: "winter",
+});
+
+// 每季主题：中文名 / 背景文件 / 装饰标记（配色由 CSS 变量按 data-season 提供）
+export const SEASON_THEMES = Object.freeze({
+  spring: Object.freeze({
+    name: "春",
+    bg: "assets/ui/bg-spring@2x.webp",
+    deco: "樱",
+  }),
+  summer: Object.freeze({
+    name: "夏",
+    bg: "assets/ui/bg-summer@2x.webp",
+    deco: "葵",
+  }),
+  autumn: Object.freeze({
+    name: "秋",
+    bg: "assets/ui/bg-autumn@2x.webp",
+    deco: "枫",
+  }),
+  winter: Object.freeze({
+    name: "冬",
+    bg: "assets/ui/bg-winter@2x.webp",
+    deco: "雪",
+  }),
+});
+
+// 月份 → 季节（纯函数）：3-5 春 / 6-8 夏 / 9-11 秋 / 12-2 冬
+// 输入：date Date 对象（默认当前时间）；输出：SEASONS 值
+export function seasonOf(date = new Date()) {
+  const month = date.getMonth() + 1;
+  if (month >= 3 && month <= 5) return SEASONS.SPRING;
+  if (month >= 6 && month <= 8) return SEASONS.SUMMER;
+  if (month >= 9 && month <= 11) return SEASONS.AUTUMN;
+  return SEASONS.WINTER;
+}
 
 // 主题定义：3 套（gold/silver 文字标记 + anya 图片币面，PL007.3 去 emoji 化）
 // faces.show 展示面品牌字「运」（静止时朝上）/ faces.yes「YES」/ faces.no「NO」；
@@ -182,6 +225,18 @@ export function validateRules(raw) {
     );
   }
 
+  // 主题自动跟随季节默认值（PL009，布尔宽容：boolean / "true" / "false" / 0 / 1）
+  const autoRaw = raw.themeAutoDefault;
+  const themeAutoDefault =
+    autoRaw === true || autoRaw === "true" || autoRaw === 1;
+  const themeAutoDefaultFalse =
+    autoRaw === false || autoRaw === "false" || autoRaw === 0;
+  if (!themeAutoDefault && !themeAutoDefaultFalse) {
+    throw new Error(
+      `themeAutoDefault 必须是布尔值，收到：${JSON.stringify(autoRaw)}`,
+    );
+  }
+
   return {
     idleTimeoutMs,
     accelFactor,
@@ -194,6 +249,7 @@ export function validateRules(raw) {
     resetFlipMs,
     historyLimit,
     clearConfirmMs,
+    themeAutoDefault,
     configVersion:
       raw.configVersion === undefined ? null : String(raw.configVersion),
   };
@@ -201,15 +257,18 @@ export function validateRules(raw) {
 
 // ===== js/rules.js 模块说明 =====
 // 常量与函数清单：
-// - REQUIRED_KEYS：rules 结构必填键单一声明处（动画 + 战绩参数）
-// - THEMES：3 套主题（gold/silver 文字标记「运/YES/NO」+ anya 图片路径），
+// - REQUIRED_KEYS：rules 结构必填键单一声明处（动画 + 战绩 + 主题参数）
+// - SEASONS：四季枚举（spring/summer/autumn/winter）
+// - SEASON_THEMES：每季 name/bg（背景文件）/deco（装饰标记），配色由 CSS 变量按 data-season 提供
+// - seasonOf(date)：月份→季节纯函数（3-5 春 / 6-8 夏 / 9-11 秋 / 12-2 冬）
+// - THEMES：硬币主题 3 套（gold/silver 文字标记「运/YES/NO」+ anya 图片路径），
 //   每套 name/faces{show,yes,no}/color/palette 五色
-// - DEFAULT_THEME：默认主题 gold
+// - DEFAULT_THEME：默认硬币主题 gold
 // - toNumber(value, label)：弹性解析内核（数字直用/字符串 trim 转换/其余拒绝）
-// - validateRules(raw)：装配期校验 config/rules.json——必填键/数值口径
-// 设计理由：主题与动画参数在代码内显式声明（P23 契约定案，不外置）；
-//   PL008 删除多局模式后移除 MODES/局数契约，只保留单次投掷所需参数；
+// - validateRules(raw)：装配期校验 config/rules.json——必填键/数值口径/主题默认值
+// 设计理由：季节枚举与主题参数在代码内显式声明（P23 契约定案，不外置）；
+//   PL008 删除多局模式，PL009 增加四季主题（背景/装饰/自动切换默认值）；
 //   校验在启动装配期一次完成（运行时零 IO 零重验）
 // 异常处理：全部中文 fail-fast 带键名/值定位；规则残缺宁可明确拒绝启动
 // 关联配置：config/rules.json；消费方 main.js 装配期调用一次，
-//   规范化产物分发 game（seed）、coin 动画（滑动/减速参数）、ui（主题）、history（上限）
+//   规范化产物分发 game（seed）、coin 动画（滑动/减速参数）、ui（主题）、history（上限）、theme（模式）

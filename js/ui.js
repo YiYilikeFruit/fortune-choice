@@ -1,27 +1,45 @@
 // ============================================================
-// 幸运硬币选择 - 渲染层（DOM 构建与刷新，只读不改业务状态）
-// 设计要点：战绩时间格式化/列表渲染为纯函数（无头可测）；
-// collectRefs 收拢骨架元素引用；业务决策留在装配层（main.js）。
-// 关联配置：rules.js 主题；coin.js 双面角；history 记录结构（PL008）。
+// 幸运硬币选择 - 渲染层（PL009 四季主题框架）
+// 设计要点：主题/结果态/战绩/主题浮窗为渲染职责，业务决策留在 main.js；
+// 纯函数（时间格式化）无头可测；硬币渲染保留 PL002-007 体系。
+// 关联配置：rules.js SEASONS/SEASON_THEMES/THEMES；coin.js 双面角。
 // ============================================================
 
 import { THEMES, DEFAULT_THEME } from "./rules.js";
 import { embossImage } from "./emboss.js";
 
+// 季节装饰 SVG（标题左上角，纯展示）
+const SEASON_DECO = {
+  spring:
+    '<svg viewBox="0 0 46 46"><g fill="#f6b8cc"><circle cx="23" cy="10" r="8"/><circle cx="36" cy="19" r="8"/><circle cx="32" cy="34" r="8"/><circle cx="14" cy="34" r="8"/><circle cx="10" cy="19" r="8"/></g><circle cx="23" cy="23" r="6" fill="#f5c242"/></svg>',
+  summer:
+    '<svg viewBox="0 0 46 46"><circle cx="23" cy="23" r="10" fill="#f5c242"/><g stroke="#f5c242" stroke-width="4" stroke-linecap="round"><path d="M23 4v6M23 36v6M4 23h6M36 23h6M10 10l4 4M32 32l4 4M36 10l-4 4M14 32l-4 4"/></g></svg>',
+  autumn:
+    '<svg viewBox="0 0 46 46"><path d="M23 4l4 8 9-3-3 9 9 5-9 5 3 9-9-3-4 8-4-8-9 3 3-9-9-5 9-5-3-9 9 3z" fill="#e8896f"/><circle cx="23" cy="23" r="5" fill="#f0a858"/></svg>',
+  winter:
+    '<svg viewBox="0 0 46 46"><g stroke="#7fb6d8" stroke-width="4" stroke-linecap="round"><path d="M23 5v36M8 14l30 18M38 14L8 32"/></g></svg>',
+};
+
 // 收集页面骨架关键元素引用（main.js 启动时调用一次）
-// 输入：doc 文档对象（默认全局 document，便于无头 stub 测缺失路径）
-// 输出：refs 对象供全部渲染/绑定函数使用
+// 输入：doc 文档对象；输出：refs 对象
 // 异常：任一关键节点缺失抛中文错误（骨架与脚本版本失配早暴露）
 export function collectRefs(doc = document) {
   const byId = (id) => doc.getElementById(id);
-  // 骨架必填节点（按真实 id 报告缺失，便于对照 index.html）
   const REQUIRED_IDS = [
+    "app",
+    "bg-layer",
+    "petals",
+    "confetti",
     "title-bar",
-    "swipe-hint",
+    "title-deco",
+    "ribbon",
+    "ribbon-text",
     "coin-stage",
     "coin-scene",
     "coin",
-    "round-result",
+    "cat-xiaohei",
+    "cat-xiaobai",
+    "hint-pill",
     "history-btn",
     "settings-btn",
     "overlay",
@@ -34,8 +52,14 @@ export function collectRefs(doc = document) {
   }
   const coin = byId("coin");
   const refs = {
+    app: byId("app"),
+    bgLayer: byId("bg-layer"),
+    petals: byId("petals"),
+    confetti: byId("confetti"),
     titleBar: byId("title-bar"),
-    swipeHint: byId("swipe-hint"),
+    titleDeco: byId("title-deco"),
+    ribbon: byId("ribbon"),
+    ribbonText: byId("ribbon-text"),
     coinStage: byId("coin-stage"),
     coinScene: byId("coin-scene"),
     coin,
@@ -43,7 +67,9 @@ export function collectRefs(doc = document) {
       yes: coin ? coin.querySelector(".face-yes") : null,
       no: coin ? coin.querySelector(".face-no") : null,
     },
-    roundResult: byId("round-result"),
+    catXiaohei: byId("cat-xiaohei"),
+    catXiaobai: byId("cat-xiaobai"),
+    hintPill: byId("hint-pill"),
     historyBtn: byId("history-btn"),
     settingsBtn: byId("settings-btn"),
     overlay: byId("overlay"),
@@ -62,9 +88,50 @@ export function collectRefs(doc = document) {
   return refs;
 }
 
+// 渲染季节主题：设置 data-season（CSS 变量换肤）+ 标题季节装饰
+// 输入：refs、season（spring/summer/autumn/winter）；输出：无
+export function renderSeason(refs, season) {
+  refs.app.dataset.season = season;
+  refs.titleDeco.innerHTML = SEASON_DECO[season] || SEASON_DECO.spring;
+}
+
+// 显示结果丝带（YES/NO）：重置动画类保证可重复播放，并触发猫咪欢呼与彩纸屑
+// 输入：refs、face（"yes"|"no"）；输出：无
+export function showRibbon(refs, face) {
+  refs.ribbonText.textContent = face === "yes" ? "YES" : "NO";
+  refs.ribbon.classList.remove("show");
+  void refs.ribbon.offsetWidth; // 强制 reflow 重启动画
+  refs.ribbon.classList.add("show");
+  // 猫咪欢呼：移除→reflow→添加，保证每次落定都触发
+  for (const cat of [refs.catXiaohei, refs.catXiaobai]) {
+    cat.classList.remove("cheer");
+    void cat.offsetWidth;
+    cat.classList.add("cheer");
+  }
+  // 彩纸屑
+  refs.confetti.classList.remove("show");
+  void refs.confetti.offsetWidth;
+  refs.confetti.classList.add("show");
+}
+
+// 复位结果态：隐藏丝带/彩纸屑/欢呼，提示胶囊回到待机文案
+// 输入：refs；输出：无
+export function resetResult(refs) {
+  refs.ribbon.classList.remove("show");
+  refs.confetti.classList.remove("show");
+  refs.catXiaohei.classList.remove("cheer");
+  refs.catXiaobai.classList.remove("cheer");
+  refs.hintPill.textContent = "左右滑动 · 抛硬币";
+}
+
+// 设置提示胶囊文案（结果态："再来一次 · 左右滑动"）
+// 输入：refs、text；输出：无
+export function renderHint(refs, text) {
+  refs.hintPill.textContent = text;
+}
+
 // 颜色加深/减淡：hex → rgb 按系数缩放（齿环暗色等派生色用）
 // 输入：hex "#rrggbb"、factor 缩放系数（0-1）；输出：派生 hex
-// 异常：非法 hex 原样返回（渲染兜底不中断）
 function shadeHex(hex, factor) {
   const m = /^#([0-9a-f]{6})$/i.exec(hex);
   if (!m) return hex;
@@ -75,9 +142,8 @@ function shadeHex(hex, factor) {
   return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
 }
 
-// 构建硬币侧面圆柱壁（PL002）：n 个窄条绕 Y 轴环排近似圆筒，滚花/金属渐变在 CSS
-// 输入：coinEl 硬币容器、n 分段数、radius 半径（px，取 --coin-size/2）、thick 厚度（px）、doc 文档对象
-// 输出：seg 元素数组（已挂载到 .coin-edge 内）
+// 构建硬币侧面圆柱壁（PL002）
+// 输入：coinEl、n 分段、radius、thick、doc；输出：seg 数组
 // 异常：n/radius/thick 非有限 → 中文 fail-fast
 export function buildCoinEdge(coinEl, n, radius, thick, doc = document) {
   if (
@@ -92,7 +158,6 @@ export function buildCoinEdge(coinEl, n, radius, thick, doc = document) {
   const arc = (2 * Math.PI * radius) / n;
   const edge = doc.createElement("div");
   edge.className = "coin-edge";
-  // 每段弧长写入 CSS 变量，供滚花条纹（每段 2 齿、与正面齿环一一对应）取实际半径值
   edge.style.setProperty("--seg-arc", `${arc}px`);
   coinEl.appendChild(edge);
   const segs = [];
@@ -101,8 +166,6 @@ export function buildCoinEdge(coinEl, n, radius, thick, doc = document) {
     seg.className = "edge-seg";
     seg.style.width = `${arc}px`;
     seg.style.height = `${thick}px`;
-    // 负 margin 把元素中心对准容器中心（left:50% top:50% 只对齐左上角），
-    // 保证 translateZ(R) 从硬币中心沿半径外移，圆环与两面同心对齐
     seg.style.marginLeft = `${-arc / 2}px`;
     seg.style.marginTop = `${-thick / 2}px`;
     seg.style.transform = `rotateY(${(i * 360) / n}deg) translateZ(${radius}px)`;
@@ -112,9 +175,7 @@ export function buildCoinEdge(coinEl, n, radius, thick, doc = document) {
   return segs;
 }
 
-// 构建币面固定层（PL004）：face 内按序创建内容标记容器 .coin-face-mark、
-// 金属光泽 .coin-shine、内 rim .coin-rim（仅一次，之后只更新标记内容，保证层序稳定）
-// 输入：faceEl 面元素；输出：mark 容器（文字/图片放其中）
+// 构建币面固定层（PL004）
 function _ensureFaceLayers(faceEl) {
   let mark = faceEl.querySelector(".coin-face-mark");
   if (!mark) {
@@ -137,10 +198,7 @@ function _ensureFaceLayers(faceEl) {
   return mark;
 }
 
-// 设置硬币面标记（PL004/PL007）：清空标记容器后按 faces 值类型分派——
-// 图片路径（.png/.jpg/.jpeg/.webp）→ img.coin-face-img（PL005 浮雕化）；
-// 文字标记 → span.face-mark（单字符放大）
-// 输入：faceEl 面元素、text 文字或图片路径；输出：无（层序由 _ensureFaceLayers 保证）
+// 设置币面标记（PL004/PL007）：文字→span；图片路径→img（PL005 浮雕化）
 function _setFaceMark(faceEl, text) {
   const mark = _ensureFaceLayers(faceEl);
   mark.textContent = "";
@@ -150,7 +208,6 @@ function _setFaceMark(faceEl, text) {
     img.className = "coin-face-img";
     img.alt = "";
     mark.appendChild(img);
-    // 浮雕化（PL005 方案 A）：图片加载后按明暗预渲染凹凸，失败降级保留原图
     img.onload = () => {
       if (img.dataset.embossed) return;
       img.dataset.embossed = "1";
@@ -158,14 +215,13 @@ function _setFaceMark(faceEl, text) {
         const url = embossImage(img);
         if (url && img.isConnected) img.src = url;
       } catch (err) {
-        // 保留原图（不能因浮雕失败让币面空白）
+        // 保留原图
       }
     };
     img.src = text;
   } else {
     const span = document.createElement("span");
     span.className = "face-mark";
-    // 单字符标记（PL007.3 show 面「运」）放大字号，多字符 YES/NO 用默认小字号
     if (typeof text === "string" && text.length <= 1) {
       span.classList.add("single");
     }
@@ -174,61 +230,36 @@ function _setFaceMark(faceEl, text) {
   }
 }
 
-// 渲染硬币主题：双面文字标记 + 材质 palette（面片/倒角/齿环取色）+ 侧面壁色
-// 输入：refs（含 faces.yes/no、coin）、theme 主题对象；输出：无
-// 说明（PL003）：palette 五色写入 #coin 容器（子面片继承），金暖银冷光谱
+// 渲染硬币主题（PL003/PL007）：双面文字标记 + palette + 壁色
+// 输入：refs（含 faces.yes/no、coin）、theme；输出：无
 export function renderCoinTheme(refs, theme) {
   _setFaceMark(refs.faces.yes, theme.faces.yes);
   _setFaceMark(refs.faces.no, theme.faces.no);
   refs.faces.yes.style.setProperty("--coin-face-yes", theme.color);
   refs.faces.no.style.setProperty("--coin-face-no", theme.color);
-  // 材质 palette（PL003）：金/银光谱写入 #coin 容器，面片多层渐变/倒角/齿环引用
   const p = theme.palette;
   refs.coin.style.setProperty("--coin-pal-hi", p.hi);
   refs.coin.style.setProperty("--coin-pal-light", p.light);
   refs.coin.style.setProperty("--coin-pal-base", p.base);
   refs.coin.style.setProperty("--coin-pal-dark", p.dark);
   refs.coin.style.setProperty("--coin-pal-deep", p.deep);
-  // 侧面壁色 = 主题色；齿环暗色 = 主题色加深（PL002）
   refs.coin.style.setProperty("--coin-edge", theme.color);
   refs.coin.style.setProperty("--coin-rim-hi", theme.color);
   refs.coin.style.setProperty("--coin-rim-lo", shadeHex(theme.color, 0.62));
 }
 
-// 设置硬币指定面为展示面（待机态该面显示封面；转回时只改翻转后将朝前的背面）
-// 输入：refs（含 faces.yes/no）、theme 主题对象、which（"yes"|"no" 目标面）；输出：无
+// 设置硬币指定面为展示面
 export function setCoinShowFace(refs, theme, which) {
   _setFaceMark(refs.faces[which], theme.faces.show);
   refs.faces[which].style.setProperty(`--coin-face-${which}`, theme.color);
 }
 
-// 设置硬币旋转角（绕 Y 轴，度）
-// 输入：coinEl、angle；输出：无
+// 设置硬币旋转角
 export function setCoinAngle(coinEl, angle) {
   coinEl.style.transform = `rotateY(${angle}deg)`;
 }
 
-// 渲染待机引导（PL008 文案）：小字弱化显示，落定结果覆盖
-// 输入：el 结果文字元素、text 文案；输出：无
-export function renderIdleHint(el, text) {
-  el.textContent = text;
-  el.classList.remove("final", "pop");
-  el.classList.add("idle");
-}
-
-// 渲染投掷结果文字（PL007.4b：落定弹入动画，reduced-motion 由 CSS 关闭）
-// 输入：el、text、isFinal；输出：无
-export function renderRoundResult(el, text, isFinal = false) {
-  el.textContent = text;
-  el.classList.remove("idle", "final", "pop");
-  el.classList.toggle("final", isFinal);
-  // 重触发弹入：先移除再强制 reflow（与 bounce 同手法）
-  void el.offsetWidth;
-  el.classList.add("pop");
-}
-
 // 战绩时间格式化（PL008，纯函数）：同年 MM-DD HH:mm，跨年 YYYY-MM-DD HH:mm
-// 输入：at 毫秒时间戳、now 参照时间（默认当前）；输出：格式化字符串（24 小时制零填充）
 export function formatHistoryTime(at, now = Date.now()) {
   const d = new Date(at);
   const n = new Date(now);
@@ -240,8 +271,8 @@ export function formatHistoryTime(at, now = Date.now()) {
   return `${date} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// 渲染战绩列表（PL008，纯渲染）：时间 + 金/银圆点 + YES/NO；空态「暂无战绩」
-// 输入：el 列表容器（ul）、records 记录数组（最新在上）、now 参照时间；输出：无
+// 渲染战绩列表（PL009 样式）：时间 + 硬币头像 + YES/NO；空态「暂无战绩」
+// 输入：el 列表容器、records（最新在上）、now；输出：无
 export function renderHistoryList(el, records, now = Date.now()) {
   el.textContent = "";
   if (records.length === 0) {
@@ -256,19 +287,20 @@ export function renderHistoryList(el, records, now = Date.now()) {
     const time = document.createElement("span");
     time.className = "history-time";
     time.textContent = formatHistoryTime(item.at, now);
-    const dot = document.createElement("span");
-    dot.className =
-      item.face === "yes" ? "score-dot dot-yes" : "score-dot dot-no";
+    const avatar = document.createElement("span");
+    avatar.className =
+      item.face === "yes" ? "coin-avatar yes" : "coin-avatar no";
+    avatar.textContent = "运";
     const face = document.createElement("span");
-    face.className = "result-face";
+    face.className = "history-face";
     face.textContent = item.face === "yes" ? "YES" : "NO";
-    li.append(time, dot, face);
+    li.append(time, avatar, face);
     el.appendChild(li);
   }
 }
 
-// 构建战绩浮层内容（PL008）：列表 + 清除按钮（二次确认；confirmMs 内未再按恢复）
-// 输入：records 记录数组、onClear 清零回调（返回剩余记录）、confirmMs 确认窗口；输出：内容节点
+// 构建战绩浮窗内容（PL008/PL009）：列表 + 清除按钮（二次确认）
+// 输入：records、onClear（返回剩余记录）、confirmMs；输出：内容节点
 export function buildHistoryContent(records, onClear, confirmMs = 3000) {
   const box = document.createElement("div");
   box.className = "history-box";
@@ -279,7 +311,7 @@ export function buildHistoryContent(records, onClear, confirmMs = 3000) {
 
   const clearBtn = document.createElement("button");
   clearBtn.type = "button";
-  clearBtn.className = "history-clear";
+  clearBtn.className = "sheet-clear";
   clearBtn.textContent = "清除全部战绩";
   let armed = false;
   let timer = null;
@@ -307,23 +339,92 @@ export function buildHistoryContent(records, onClear, confirmMs = 3000) {
   return box;
 }
 
-// 构建浮层卡片内容并显示
-// 输入：overlay 容器、title、contentEl 已构建内容节点；输出：无
-export function showOverlayCard(overlay, title, contentEl) {
-  const card = document.createElement("div");
-  card.className = "overlay-card";
-  const h = document.createElement("h3");
-  h.textContent = title;
+// 主题卡缩略图（占位 SVG：春樱花/夏太阳/秋枫叶/冬雪花）
+const THEME_THUMBS = {
+  spring:
+    '<svg viewBox="0 0 160 120"><rect width="160" height="120" fill="#f9d9e4"/><circle cx="80" cy="66" r="34" fill="#f6c8d8"/><circle cx="56" cy="84" r="20" fill="#fbe4ec"/><circle cx="104" cy="84" r="20" fill="#fbe4ec"/></svg>',
+  summer:
+    '<svg viewBox="0 0 160 120"><rect width="160" height="120" fill="#cdeaf6"/><circle cx="80" cy="60" r="26" fill="#f5c242"/><path d="M80 18v10M80 92v10M38 60h10M112 60h10M50 30l7 7M103 83l7 7M110 30l-7 7M57 83l-7 7" stroke="#f5c242" stroke-width="5" stroke-linecap="round"/></svg>',
+  autumn:
+    '<svg viewBox="0 0 160 120"><rect width="160" height="120" fill="#f0d3a8"/><path d="M80 22l10 20 22-6-6 22 20 12-20 12 6 22-22-6-10 20-10-20-22 6 6-22-20-12 20-12-6-22 22 6z" fill="#d98262"/></svg>',
+  winter:
+    '<svg viewBox="0 0 160 120"><rect width="160" height="120" fill="#dceff9"/><g stroke="#7fb6d8" stroke-width="4" stroke-linecap="round"><path d="M80 24v72M50 42l60 36M110 42L50 78"/></g></svg>',
+};
+
+// 构建换主题浮窗内容（PL009）：四卡选择 + 自动跟随开关 + 当前季节
+// 输入：current 当前季节、autoMode 是否自动、onSelect(season)、onToggleAuto(bool)；输出：内容节点
+export function buildThemeContent(current, autoMode, onSelect, onToggleAuto) {
+  const box = document.createElement("div");
+  box.className = "theme-box";
+
+  const grid = document.createElement("div");
+  grid.className = "theme-grid";
+  const seasons = ["spring", "summer", "autumn", "winter"];
+  const seasonNames = {
+    spring: "春",
+    summer: "夏",
+    autumn: "秋",
+    winter: "冬",
+  };
+  for (const season of seasons) {
+    const tile = document.createElement("button");
+    tile.type = "button";
+    tile.className = "theme-tile" + (season === current ? " active" : "");
+    tile.dataset.season = season;
+    tile.innerHTML = `<div class="thumb">${THEME_THUMBS[season]}</div>
+      <span class="check"><svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M4 12l5 5L20 6"/></svg></span>
+      <span class="label">${seasonNames[season]}</span>`;
+    tile.addEventListener("click", () => onSelect(season));
+    grid.appendChild(tile);
+  }
+  box.appendChild(grid);
+
+  const autoRow = document.createElement("div");
+  autoRow.className = "auto-row";
+  const autoLabel = document.createElement("span");
+  autoLabel.textContent = "跟随季节自动切换";
+  const sw = document.createElement("span");
+  sw.className = "switch" + (autoMode ? " on" : "");
+  sw.addEventListener("click", () => {
+    const next = !sw.classList.contains("on");
+    sw.classList.toggle("on", next);
+    onToggleAuto(next);
+  });
+  autoRow.append(autoLabel, sw);
+  box.appendChild(autoRow);
+
+  const currentRow = document.createElement("div");
+  currentRow.className = "current-season";
+  currentRow.innerHTML = `当前：<b>${seasonNames[current]}季</b>`;
+  box.appendChild(currentRow);
+
+  return box;
+}
+
+// 显示浮层卡片（PL009 样式）：粉色标题胶囊 + 内容 + 关闭按钮
+// 输入：overlay、title、contentEl；输出：卡片节点
+export function showSheet(overlay, title, contentEl) {
+  const inner = document.createElement("div");
+  inner.className = "overlay-inner";
+  const sheet = document.createElement("div");
+  sheet.className = "sheet";
+
+  const titleEl = document.createElement("div");
+  titleEl.className = "sheet-title";
+  titleEl.textContent = title;
+
   const close = document.createElement("button");
   close.type = "button";
-  close.className = "overlay-close";
+  close.className = "sheet-close";
   close.textContent = "关闭";
-  card.append(h, contentEl, close);
+
+  sheet.append(titleEl, contentEl, close);
+  inner.appendChild(sheet);
   overlay.innerHTML = "";
-  overlay.appendChild(card);
+  overlay.appendChild(inner);
   overlay.hidden = false;
   close.addEventListener("click", () => hideOverlay(overlay));
-  return card;
+  return sheet;
 }
 
 // 隐藏浮层
@@ -332,7 +433,7 @@ export function hideOverlay(overlay) {
   overlay.innerHTML = "";
 }
 
-// 轻提示（超时提醒等）
+// 轻提示
 // 输入：toast 元素、text；输出：无（1.8s 后自动隐藏）
 export function showToast(toast, text) {
   toast.textContent = text;
@@ -343,44 +444,19 @@ export function showToast(toast, text) {
   }, 1800);
 }
 
-// 构建设置浮层内容：硬币主题切换（PL007.3：色点 + 名称，零 emoji）
-// 输入：currentTheme 当前主题名、onChange 回调；输出：内容节点
-export function buildSettingsContent(currentTheme, onChange) {
-  const box = document.createElement("div");
-  box.className = "theme-options";
-  for (const [name, theme] of Object.entries(THEMES)) {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "theme-option";
-    btn.dataset.theme = name;
-    // 主题色圆点前置（替代原 faces.show emoji 拼接）
-    const swatch = document.createElement("span");
-    swatch.className = "theme-swatch";
-    swatch.style.background = theme.color;
-    const label = document.createElement("span");
-    label.textContent = theme.name;
-    btn.append(swatch, label);
-    btn.classList.toggle("active", name === currentTheme);
-    btn.addEventListener("click", () => onChange(name));
-    box.appendChild(btn);
-  }
-  return box;
-}
-
 // ===== js/ui.js 模块说明 =====
 // 函数清单：
-// - collectRefs(doc)：骨架元素引用收集（含 title-bar/history-btn），缺失 fail-fast
-// - buildCoinEdge(coinEl,n,radius,thick)：构建圆柱侧面壁（PL002，写 --seg-arc）
-// - shadeHex(hex,factor)：派生加深色（齿环暗色等，PL002）
-// - _setFaceMark(faceEl,text)：面标记分派（文字→span / 图片路径→img，PL004/PL007）
-// - renderCoinTheme / setCoinShowFace / setCoinAngle：硬币渲染（palette 写变量，PL003）
-// - renderIdleHint / renderRoundResult：待机引导弱化显示 / 结果文字落定弹入（PL007.4b）
-// - formatHistoryTime(at,now)：战绩时间格式化（同年 MM-DD HH:mm / 跨年带年份，纯函数）
-// - renderHistoryList(el,records,now)：战绩列表渲染（时间 + 圆点 + YES/NO，空态）
-// - buildHistoryContent(records,onClear,confirmMs)：战绩浮层内容（清除按钮二次确认）
-// - showOverlayCard / hideOverlay / showToast：浮层与提示
-// - buildSettingsContent：设置浮层内容（色点 + 名称，PL007.3）
-// 设计理由：渲染层只画快照不改业务状态（装配层 main.js 是唯一业务容器）；
-//   时间格式化/列表渲染纯函数无头可测；PL008 删除多局后移除模式/选择器/比分渲染
+// - SEASON_DECO / THEME_THUMBS：标题季节装饰与主题缩略图（内联 SVG 占位）
+// - collectRefs(doc)：骨架元素引用收集（PL009 新结构），缺失 fail-fast
+// - renderSeason(refs, season)：设置 data-season（CSS 换肤）+ 标题装饰
+// - showRibbon / resetResult / renderHint：结果丝带（含猫咪欢呼/彩纸屑）/ 复位 / 提示文案
+// - buildCoinEdge / _ensureFaceLayers / _setFaceMark / renderCoinTheme /
+//   setCoinShowFace / setCoinAngle：硬币渲染（PL002-007 体系保留）
+// - formatHistoryTime / renderHistoryList：战绩时间格式化与列表（纯函数/纯渲染）
+// - buildHistoryContent：战绩浮窗内容（二次确认清零）
+// - buildThemeContent：换主题内容（四季卡 + 自动开关 + 当前季节）
+// - showSheet / hideOverlay / showToast：浮层与提示
+// 设计理由：渲染层只画快照不改业务状态（main.js 唯一业务容器）；
+//   PL009 新增四季主题与结果丝带，沿用贴纸风组件与 reduced-motion 约束
 // 异常处理：collectRefs 骨架缺失 fail-fast；其余渲染路径零异常不中断
-// 关联配置：rules.js THEMES/DEFAULT_THEME、coin.js 双面角、history 记录结构；消费方 main.js
+// 关联配置：rules.js SEASONS/SEASON_THEMES/THEMES、coin.js 双面角；消费方 main.js
