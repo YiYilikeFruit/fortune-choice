@@ -1,6 +1,6 @@
 # 幸运硬币选择
 
-> **V0.1.3.0** · 版本号唯一来源：[`config/version.json`](config/version.json)
+> **V0.1.3.1** · 版本号唯一来源：[`config/version.json`](config/version.json)
 
 用丢硬币的趣味游戏，帮你做出简单决策。
 
@@ -99,7 +99,7 @@ fortune-choice/
 │   └── main.js             # 启动装配与投掷编排（主题初始化 / 滑动→旋转→落定→记战绩）
 ├── config/
 │   ├── rules.json          # 滑动/动画参数 / 战绩上限与确认窗口 / 主题自动默认
-│   └── version.json        # 版本号单一来源（V0.1.3.0）
+│   └── version.json        # 版本号单一来源（V0.1.3.1）
 ├── assets/
 │   └── ui/                 # 四季背景图（bg-spring|summer|autumn|winter@2x.webp）
 ├── design/                 # 设计稿（prototype.html / asset-manifest.md / 效果图）

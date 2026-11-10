@@ -130,6 +130,12 @@
 - 路径处理：强制使用 `pathlib` 代替 `os.path`
 - 临时文件：所有临时生成的脚本/文件必须写入项目根目录下的 `.temp/` 文件夹（已 gitignore）；确需系统 TEMP（如 `tempfile.mkdtemp`）时 finally 必须 rmtree 其**返回的根目录**而非仅内部子目录，且收工前对 TEMP 做残留扫描（A018 教训：历轮探针泄漏约 120 个 mkdtemp 目录 + mw_before_pl006.py 快照）
 
+## 任务命名规则（Patch）
+
+- 小型修复 / 微调（非方案级新功能）统一命名为 `PatchNNN`（三位数递增：Patch001、Patch002…），一组修复含多条子任务（`Patch001.1`、`Patch001.2`…）；方案级新功能仍用 `PLNNN`
+- 落位：方案节写入 `z.plan.md`（追加到文件末尾，不占 PL 编号）；任务组写入 `x.progress.md`（条目格式同 PL 组，含实现与验证方法）
+- Patch 提交的 type 按改动性质选择（`feat` / `fix` / `refactor` 等，不限定 `fix`）；版本推进统一走 Patch 规则（四段式 `VX.Y.Z.R` 的**第四位 R+1**）
+
 ## Git 注意
 
 - `.gitignore` 忽略 `.venv`、`reference/`、`archived/`、`.temp/`、`config/user_config.json`、`data/credentials/`、`data/logs/`、`data/prices/`、运行时凭据文件（含配额凭据）—— 对这些文件的修改不会出现在 `git status` 中；`AGENTS.md` 已纳入版本控制

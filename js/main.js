@@ -309,34 +309,32 @@ function bindUI(ctx, refs) {
       ui.hideOverlay(refs.overlay);
       return;
     }
-    const openTheme = () => {
-      const content = ui.buildThemeContent(
-        ctx.season,
-        ctx.seasonMode === "auto",
-        (season) => {
-          ctx.seasonMode = "manual";
-          ctx.season = season;
-          saveThemeState(ctx.storage, {
-            mode: ctx.seasonMode,
-            season: ctx.season,
-          });
-          applySeason(ctx, refs);
-          openTheme(); // 重开以刷新选中态
-        },
-        (autoOn) => {
-          ctx.seasonMode = autoOn ? "auto" : "manual";
-          if (autoOn) ctx.season = seasonOf(new Date());
-          saveThemeState(ctx.storage, {
-            mode: ctx.seasonMode,
-            season: ctx.season,
-          });
-          applySeason(ctx, refs);
-          openTheme();
-        },
-      );
-      ui.showSheet(refs.overlay, "换主题", content);
-    };
-    openTheme();
+    const content = ui.buildThemeContent(
+      ctx.season,
+      ctx.seasonMode === "auto",
+      (season) => {
+        ctx.seasonMode = "manual";
+        ctx.season = season;
+        saveThemeState(ctx.storage, {
+          mode: ctx.seasonMode,
+          season: ctx.season,
+        });
+        // 只应用背景换肤并更新浮窗选中态（不重建浮窗，避免整窗重播动画）
+        applySeason(ctx, refs);
+        ui.updateThemeSelection(refs.overlay, ctx.season);
+      },
+      (autoOn) => {
+        ctx.seasonMode = autoOn ? "auto" : "manual";
+        if (autoOn) ctx.season = seasonOf(new Date());
+        saveThemeState(ctx.storage, {
+          mode: ctx.seasonMode,
+          season: ctx.season,
+        });
+        applySeason(ctx, refs);
+        ui.updateThemeSelection(refs.overlay, ctx.season);
+      },
+    );
+    ui.showSheet(refs.overlay, "换主题", content);
   });
 }
 

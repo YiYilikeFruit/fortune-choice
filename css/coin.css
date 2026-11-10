@@ -12,6 +12,8 @@
   --radius-card: 22px;
   --radius-pill: 999px;
   --font: system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+  /* kinetics 弹簧曲线（16. Switch spring）：0.4s 带 overshoot */
+  --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --touch-min: 44px;
@@ -51,7 +53,7 @@ body {
 /* ============================================================
    四季主题变量（配色取自设计稿实测）
    ============================================================ */
-#app[data-season="spring"] {
+body[data-season="spring"] {
   --bg: #f7c9d8;
   --card: #fff8ec;
   --card-2: #ffeef2;
@@ -66,7 +68,7 @@ body {
   --bg-image: url("../assets/ui/bg-spring@2x.webp");
 }
 
-#app[data-season="summer"] {
+body[data-season="summer"] {
   --bg: #bfe3f2;
   --card: #fff8ec;
   --card-2: #e8f6fb;
@@ -81,7 +83,7 @@ body {
   --bg-image: url("../assets/ui/bg-summer@2x.webp");
 }
 
-#app[data-season="autumn"] {
+body[data-season="autumn"] {
   --bg: #f0c393;
   --card: #fff8ec;
   --card-2: #fdeee0;
@@ -96,7 +98,7 @@ body {
   --bg-image: url("../assets/ui/bg-autumn@2x.webp");
 }
 
-#app[data-season="winter"] {
+body[data-season="winter"] {
   --bg: #cfe8f4;
   --card: #fffdf8;
   --card-2: #eaf6fb;
@@ -923,7 +925,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(60, 45, 35, 0.3);
+  /* 遮罩减淡（设计稿浮窗下背景几乎不变暗） */
+  background: rgba(60, 45, 35, 0.12);
   padding: 20px;
 }
 
@@ -1100,14 +1103,14 @@ body {
   fill: none;
 }
 
-/* 关闭按钮 */
+/* 关闭按钮（设计稿：粉色胶囊） */
 .sheet-close {
   width: 100%;
   height: 52px;
   margin-top: 12px;
   border-radius: var(--radius-pill);
   border: 2.5px solid var(--ink);
-  background: var(--card);
+  background: var(--accent);
   font-size: 16px;
   font-weight: 800;
   color: var(--ink);
@@ -1119,7 +1122,7 @@ body {
   cursor: pointer;
 }
 
-/* 主题选择：2×2 场景缩略卡 */
+/* 主题选择：2×2 场景缩略卡（设计稿：实底图 + 奶油标签条 + 金环勾选） */
 .theme-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1135,7 +1138,9 @@ body {
   overflow: hidden;
   cursor: pointer;
   padding: 0;
-  background: none;
+  /* 实底防透明：缩略图加载前也有奶油底 */
+  background: var(--card);
+  box-shadow: 0 0 0 3px #fff8ec;
   font-family: var(--font);
 }
 
@@ -1144,10 +1149,25 @@ body {
   inset: 0;
 }
 
-.theme-tile .thumb svg {
+/* 场景缩略图（背景原图裁切） */
+.theme-tile .thumb img {
   width: 100%;
   height: 100%;
   display: block;
+  object-fit: cover;
+  object-position: center 30%;
+}
+
+/* 中央季节象征（透明 PNG 叠加，设计稿构图）：位于场景区中心（标签条上方） */
+.theme-tile .emblem {
+  position: absolute;
+  top: calc((100% - 34px) / 2);
+  left: 50%;
+  width: 45%;
+  height: auto;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  filter: drop-shadow(0 2px 2px rgba(107, 74, 58, 0.28));
 }
 
 .theme-tile .label {
@@ -1159,7 +1179,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 248, 236, 0.92);
+  background: var(--card);
   border-top: 2px solid var(--ink);
   font-size: 15px;
   font-weight: 800;
@@ -1192,7 +1212,7 @@ body {
 .theme-tile .check svg {
   width: 16px;
   height: 16px;
-  stroke: var(--ink);
+  stroke: #fffdf8;
   stroke-width: 3;
   fill: none;
 }
@@ -1214,36 +1234,42 @@ body {
 }
 
 .switch {
-  width: 56px;
-  height: 32px;
-  border-radius: var(--radius-pill);
-  border: 2.5px solid var(--ink);
-  background: #d8d3cc;
-  position: relative;
+  width: 54px;
+  height: 30px;
+  padding: 4px;
+  border-radius: 100px;
+  background: var(--card-2);
+  border: 2px solid var(--ink);
   cursor: pointer;
   flex: 0 0 auto;
-  transition: background 150ms ease;
+  display: flex;
+  align-items: center;
+  /* kinetics 16. Switch spring（PL009）：背景 0.3s + 旋钮 0.4s 弹簧（见 .switch-knob） */
+  transition:
+    background 0.3s ease,
+    border-color 0.3s ease;
 }
 
 .switch.on {
   background: var(--accent-2);
+  border-color: var(--ink);
 }
 
-.switch::after {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
+/* 弹簧旋钮（kinetics 结构：独立元素 + --spring 曲线） */
+.switch-knob {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #fff;
+  background: #fffdf8;
   border: 2px solid var(--ink);
-  transition: transform 150ms ease;
+  transition:
+    transform 0.4s var(--spring),
+    background 0.3s ease;
 }
 
-.switch.on::after {
+.switch.on .switch-knob {
   transform: translateX(24px);
+  background: #fffdf8;
 }
 
 .current-season {

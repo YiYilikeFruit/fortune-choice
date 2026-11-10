@@ -89,9 +89,14 @@ export function collectRefs(doc = document) {
 }
 
 // 渲染季节主题：设置 data-season（CSS 变量换肤）+ 标题季节装饰
+// 说明：变量定义在 body 上（不是 #app）——浮窗 #overlay 是 #app 的兄弟节点，
+//   只有 body 级变量能同时覆盖主界面与浮窗，否则浮窗背景/按钮全部透明
 // 输入：refs、season（spring/summer/autumn/winter）；输出：无
 export function renderSeason(refs, season) {
   refs.app.dataset.season = season;
+  if (typeof document !== "undefined" && document.body) {
+    document.body.dataset.season = season;
+  }
   refs.titleDeco.innerHTML = SEASON_DECO[season] || SEASON_DECO.spring;
 }
 
@@ -339,16 +344,20 @@ export function buildHistoryContent(records, onClear, confirmMs = 3000) {
   return box;
 }
 
-// 主题卡缩略图（占位 SVG：春樱花/夏太阳/秋枫叶/冬雪花）
+// 主题卡缩略图（与四季背景原图同源裁切，PL009）：assets/thumbs/thumb-<season>@2x.webp
 const THEME_THUMBS = {
-  spring:
-    '<svg viewBox="0 0 160 120"><rect width="160" height="120" fill="#f9d9e4"/><circle cx="80" cy="66" r="34" fill="#f6c8d8"/><circle cx="56" cy="84" r="20" fill="#fbe4ec"/><circle cx="104" cy="84" r="20" fill="#fbe4ec"/></svg>',
-  summer:
-    '<svg viewBox="0 0 160 120"><rect width="160" height="120" fill="#cdeaf6"/><circle cx="80" cy="60" r="26" fill="#f5c242"/><path d="M80 18v10M80 92v10M38 60h10M112 60h10M50 30l7 7M103 83l7 7M110 30l-7 7M57 83l-7 7" stroke="#f5c242" stroke-width="5" stroke-linecap="round"/></svg>',
-  autumn:
-    '<svg viewBox="0 0 160 120"><rect width="160" height="120" fill="#f0d3a8"/><path d="M80 22l10 20 22-6-6 22 20 12-20 12 6 22-22-6-10 20-10-20-22 6 6-22-20-12 20-12-6-22 22 6z" fill="#d98262"/></svg>',
-  winter:
-    '<svg viewBox="0 0 160 120"><rect width="160" height="120" fill="#dceff9"/><g stroke="#7fb6d8" stroke-width="4" stroke-linecap="round"><path d="M80 24v72M50 42l60 36M110 42L50 78"/></g></svg>',
+  spring: "assets/thumbs/thumb-spring@2x.webp",
+  summer: "assets/thumbs/thumb-summer@2x.webp",
+  autumn: "assets/thumbs/thumb-autumn@2x.webp",
+  winter: "assets/thumbs/thumb-winter@2x.webp",
+};
+
+// 主题卡中央季节象征（透明 PNG 图标，PL009）：assets/icons/season-<season>.png
+const SEASON_ICONS = {
+  spring: "assets/icons/season-spring.png",
+  summer: "assets/icons/season-summer.png",
+  autumn: "assets/icons/season-autumn.png",
+  winter: "assets/icons/season-winter.png",
 };
 
 // 构建换主题浮窗内容（PL009）：四卡选择 + 自动跟随开关 + 当前季节
@@ -371,9 +380,35 @@ export function buildThemeContent(current, autoMode, onSelect, onToggleAuto) {
     tile.type = "button";
     tile.className = "theme-tile" + (season === current ? " active" : "");
     tile.dataset.season = season;
-    tile.innerHTML = `<div class="thumb">${THEME_THUMBS[season]}</div>
-      <span class="check"><svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M4 12l5 5L20 6"/></svg></span>
-      <span class="label">${seasonNames[season]}</span>`;
+
+    // 场景缩略图（背景原图裁切，实底不透明）
+    const thumb = document.createElement("div");
+    thumb.className = "thumb";
+    const img = document.createElement("img");
+    img.src = THEME_THUMBS[season];
+    img.alt = `${seasonNames[season]}季主题`;
+    img.draggable = false;
+    thumb.appendChild(img);
+
+    // 中央季节象征（透明 PNG 叠加，设计稿构图）
+    const emblem = document.createElement("img");
+    emblem.className = "emblem";
+    emblem.src = SEASON_ICONS[season];
+    emblem.alt = "";
+    emblem.draggable = false;
+
+    // 选中勾选徽章
+    const check = document.createElement("span");
+    check.className = "check";
+    check.innerHTML =
+      '<svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M4 12l5 5L20 6"/></svg>';
+
+    // 季节标签条
+    const label = document.createElement("span");
+    label.className = "label";
+    label.textContent = seasonNames[season];
+
+    tile.append(thumb, emblem, check, label);
     tile.addEventListener("click", () => onSelect(season));
     grid.appendChild(tile);
   }
@@ -383,11 +418,18 @@ export function buildThemeContent(current, autoMode, onSelect, onToggleAuto) {
   autoRow.className = "auto-row";
   const autoLabel = document.createElement("span");
   autoLabel.textContent = "跟随季节自动切换";
+  // kinetics 16. Switch spring 结构（PL009）：switch 内独立 knob 元素 + 弹簧位移
   const sw = document.createElement("span");
   sw.className = "switch" + (autoMode ? " on" : "");
+  sw.setAttribute("role", "switch");
+  sw.setAttribute("aria-checked", String(autoMode));
+  const knob = document.createElement("span");
+  knob.className = "switch-knob";
+  sw.appendChild(knob);
   sw.addEventListener("click", () => {
     const next = !sw.classList.contains("on");
     sw.classList.toggle("on", next);
+    sw.setAttribute("aria-checked", String(next));
     onToggleAuto(next);
   });
   autoRow.append(autoLabel, sw);
@@ -399,6 +441,20 @@ export function buildThemeContent(current, autoMode, onSelect, onToggleAuto) {
   box.appendChild(currentRow);
 
   return box;
+}
+
+// 更新主题浮窗的选中态（PL009）：切主题只改背景与选中卡，不重建浮窗
+// 输入：overlay 浮层容器、season 新季节；输出：无
+export function updateThemeSelection(overlay, season) {
+  const tiles = overlay.querySelectorAll(".theme-tile");
+  for (const tile of tiles) {
+    tile.classList.toggle("active", tile.dataset.season === season);
+  }
+  const current = overlay.querySelector(".current-season b");
+  if (current) {
+    const names = { spring: "春", summer: "夏", autumn: "秋", winter: "冬" };
+    current.textContent = `${names[season] ?? ""}季`;
+  }
 }
 
 // 显示浮层卡片（PL009 样式）：粉色标题胶囊 + 内容 + 关闭按钮
